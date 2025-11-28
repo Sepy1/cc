@@ -1,0 +1,131 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+
+// Alias controllers
+use App\Http\Controllers\Admin\TicketAdminController as AdminTicketController;
+use App\Http\Controllers\Officer\TicketController as OfficerTicketController;
+
+/*
+|--------------------------------------------------------------------------
+| Public / Home
+|--------------------------------------------------------------------------
+*/
+Route::get('/', function () {
+    return view('welcome');
+})->name('home');
+
+/*
+|--------------------------------------------------------------------------
+| Dashboard redirect (after login)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->get('/dashboard', function () {
+    $user = Auth::user();
+
+    if ($user->role === 'admin') {
+        return redirect()->route('admin.tickets.index');
+    }
+
+    if ($user->role === 'officer') {
+        return redirect()->route('officer.tickets.index');
+    }
+
+    return view('dashboard');
+})->name('dashboard');
+
+/*
+|--------------------------------------------------------------------------
+| Admin area (only role:admin)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'role:admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+
+        // List
+        Route::get('/tickets', [AdminTicketController::class, 'index'])
+            ->name('tickets.index');
+
+        // Create / Store
+        Route::get('/tickets/create', [AdminTicketController::class, 'create'])
+            ->name('tickets.create');
+        Route::post('/tickets', [AdminTicketController::class, 'store'])
+            ->name('tickets.store');
+
+        // Show (detail) - ticket id numeric only
+        Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])
+            ->whereNumber('ticket')
+            ->name('tickets.show');
+
+        // Edit / Update
+        Route::get('/tickets/{ticket}/edit', [AdminTicketController::class, 'edit'])
+            ->whereNumber('ticket')
+            ->name('tickets.edit');
+        Route::put('/tickets/{ticket}', [AdminTicketController::class, 'update'])
+            ->whereNumber('ticket')
+            ->name('tickets.update');
+
+        // Delete
+        Route::delete('/tickets/{ticket}', [AdminTicketController::class, 'destroy'])
+            ->whereNumber('ticket')
+            ->name('tickets.destroy');
+
+        // Assign officer
+        Route::post('/tickets/{ticket}/assign', [AdminTicketController::class, 'assign'])
+            ->whereNumber('ticket')
+            ->name('tickets.assign');
+
+        // Admin reply
+        Route::post('/tickets/{ticket}/reply', [AdminTicketController::class, 'reply'])
+            ->whereNumber('ticket')
+            ->name('tickets.reply');
+
+        // Quick status change (admin)
+        Route::post('/tickets/{ticket}/status', [AdminTicketController::class, 'changeStatus'])
+            ->whereNumber('ticket')
+            ->name('tickets.change_status');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Officer area (only role:officer)
+|--------------------------------------------------------------------------
+|
+| NOTE: controller should verify that the authenticated officer is allowed
+| to view/update the requested ticket (e.g. ticket->assigned_to === auth()->id()).
+|
+*/
+Route::middleware(['auth', 'role:officer'])
+    ->prefix('officer')
+    ->name('officer.')
+    ->group(function () {
+
+        // Tickets assigned to this officer
+        Route::get('/tickets', [OfficerTicketController::class, 'indexAssigned'])
+            ->name('tickets.index');
+
+        // Show ticket detail for officer (id numeric)
+        Route::get('/tickets/{ticket}', [OfficerTicketController::class, 'show'])
+            ->whereNumber('ticket')
+            ->name('tickets.show');
+
+        // Officer reply
+        Route::post('/tickets/{ticket}/reply', [OfficerTicketController::class, 'reply'])
+            ->whereNumber('ticket')
+            ->name('tickets.reply');
+
+        // Officer update status
+        Route::post('/tickets/{ticket}/status', [OfficerTicketController::class, 'updateStatus'])
+            ->whereNumber('ticket')
+            ->name('tickets.update_status');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Auth (Breeze)
+|--------------------------------------------------------------------------
+*/
+require __DIR__.'/auth.php';

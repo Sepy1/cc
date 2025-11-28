@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tracking Tiket Helpdesk</title>
+  <style>
+    body { font-family: Inter, Arial, sans-serif; background:#f4f6f8; padding:24px; }
+    .card { max-width:720px; margin:24px auto; background:#fff; padding:18px; border-radius:10px; box-shadow:0 6px 20px rgba(15,15,15,0.06); }
+    h1 { margin:0 0 10px; font-size:20px; }
+    label { display:block; margin-top:12px; font-weight:600; }
+    input { width:100%; padding:10px 12px; margin-top:6px; border-radius:8px; border:1px solid #d6dbe0; }
+    button { margin-top:14px; padding:10px 14px; border-radius:8px; border:0; background:#0f62fe; color:#fff; cursor:pointer; font-weight:600; }
+    .message { margin-top:14px; padding:12px; border-radius:8px; display:none; }
+    .message.error { background:#fff0f0; color:#9b1c1c; border:1px solid #f1c0c0; }
+    .message.info { background:#eef8ff; color:#054a91; border:1px solid #cfe8ff; }
+    .ticket-box { margin-top:16px; padding:14px; border-radius:8px; background:#fbfbff; border:1px solid #e8eaf6; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; }
+    .col { flex:1 1 280px; }
+    pre { white-space:pre-wrap; word-break:break-word; background:transparent; margin:0; padding:0; font-family:monospace; }
+    small.meta { color:#6b7280; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Tracking Tiket</h1>
+  <p class="small meta">Masukkan nomor tiket (contoh: <code>TCK-20251126-XXXXXX</code>)</p>
+
+  <label for="ticketNo">Nomor Tiket</label>
+  <input id="ticketNo" placeholder="TCK-20251126-4F7A2B" />
+
+  <button id="btnSearch">Cari Tiket</button>
+
+  <div id="message" class="message"></div>
+
+  <div id="result" class="ticket-box" style="display:none;">
+    <h3>Detail Tiket</h3>
+    <div class="row">
+      <div class="col"><strong>Nomor</strong><div id="r_ticket_no"></div></div>
+      <div class="col"><strong>Status</strong><div id="r_status"></div></div>
+    </div>
+    <div style="margin-top:12px;">
+      <strong>Judul</strong>
+      <div id="r_title"></div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <strong>Pelapor</strong>
+      <div id="r_reporter"></div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <strong>Kontak</strong>
+      <div id="r_contact"></div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <strong>Kategori</strong>
+      <div id="r_category"></div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <strong>Detail</strong>
+      <pre id="r_detail"></pre>
+    </div>
+
+    <div style="margin-top:10px;">
+      <small class="meta">Dibuat: <span id="r_created_at"></span> — Terakhir diupdate: <span id="r_updated_at"></span></small>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const baseApi = "http://127.0.0.1:8000/api"; // Ganti sesuai domain API Anda
+  const btn = document.getElementById('btnSearch');
+  const ticketInput = document.getElementById('ticketNo');
+  const message = document.getElementById('message');
+  const resultBox = document.getElementById('result');
+
+  function showMessage(text, type='info') {
+    message.style.display = 'block';
+    message.className = 'message ' + (type==='error' ? 'error' : 'info');
+    message.innerHTML = text;
+  }
+
+  function hideMessage() { message.style.display = 'none'; }
+  function hideResult() { resultBox.style.display = 'none'; }
+
+  function renderTicket(obj) {
+    document.getElementById('r_ticket_no').textContent = obj.ticket_no ?? obj.ticketNo ?? '';
+    document.getElementById('r_status').textContent = obj.status ?? '';
+    document.getElementById('r_title').textContent = obj.title ?? '';
+    document.getElementById('r_reporter').textContent = obj.reporter_name ?? obj.reporter ?? '';
+    document.getElementById('r_contact').textContent = (obj.phone ? 'HP: ' + obj.phone : '') + (obj.email ? (', Email: ' + obj.email) : '');
+    document.getElementById('r_category').textContent = obj.category ?? '';
+    document.getElementById('r_detail').textContent = obj.detail ?? '';
+    document.getElementById('r_created_at').textContent = obj.created_at ?? '';
+    document.getElementById('r_updated_at').textContent = obj.updated_at ?? '';
+    resultBox.style.display = 'block';
+  }
+
+  async function fetchByPath(path) {
+    // wrapper fetch simple: returns {ok, status, json()}
+    try {
+      const res = await fetch(path, { method: 'GET', headers: { 'Accept': 'application/json' } });
+      const text = await res.text();
+      // try parse json safely
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch(e) { data = text; }
+      return { ok: res.ok, status: res.status, data };
+    } catch (err) {
+      return { ok: false, status: 0, data: null, error: err.message };
+    }
+  }
+
+  btn.addEventListener('click', async function(){
+    hideMessage(); hideResult();
+
+    const ticketNo = ticketInput.value.trim();
+    if (!ticketNo) {
+      showMessage("Masukkan nomor tiket terlebih dahulu.", "error");
+      return;
+    }
+
+    showMessage("Mencari tiket...", "info");
+
+    // 1) coba RESTful: GET /api/tickets/{ticket_no}
+    let try1 = await fetchByPath(`${baseApi}/tickets/${encodeURIComponent(ticketNo)}`);
+    if (try1.ok) {
+      // Api kemungkinan mengembalikan { success:true, data: {...} } atau langsung object
+      let payload = try1.data;
+      if (payload && payload.data) payload = payload.data;
+      hideMessage();
+      renderTicket(payload);
+      return;
+    }
+
+    // 2) jika 404 atau tidak ok, coba query param: GET /api/tickets?ticket_no=...
+    let try2 = await fetchByPath(`${baseApi}/tickets?ticket_no=${encodeURIComponent(ticketNo)}`);
+    if (try2.ok) {
+      let payload = try2.data;
+      // bisa jadi API mengembalikan list {data: [ ... ] } atau single object
+      if (Array.isArray(payload)) {
+        if (payload.length === 0) {
+          showMessage("Tiket tidak ditemukan.", "error");
+          return;
+        }
+        renderTicket(payload[0]);
+        hideMessage();
+        return;
+      }
+      if (payload && payload.data) {
+        // if data is array or object
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data;
+        if (!d) { showMessage("Tiket tidak ditemukan.", "error"); return; }
+        renderTicket(d);
+        hideMessage();
+        return;
+      }
+      // if payload is object (ticket)
+      if (payload && payload.ticket_no) {
+        renderTicket(payload);
+        hideMessage();
+        return;
+      }
+      // fallback
+      showMessage("Tiket tidak ditemukan.", "error");
+      return;
+    }
+
+    // jika kedua percobaan gagal:
+    if (try1.status === 0 && try2.status === 0) {
+      showMessage("Gagal menghubungi server API. Pastikan server API aktif & CORS mengizinkan origin ini.", "error");
+    } else {
+      showMessage("Tiket tidak ditemukan atau terjadi kesalahan. (HTTP: " + (try1.status || try2.status) + ")", "error");
+    }
+  });
+})();
+</script>
+</body>
+</html>

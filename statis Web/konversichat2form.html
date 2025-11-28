@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konversi Chat WhatsApp ke Formulir Ticket</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #333;
+            margin: 20px 0 10px 0;
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 15px;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .result {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .url-preview {
+            background: #e3f2fd;
+            border: 1px solid #2196F3;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .required::after {
+            content: " *";
+            color: red;
+        }
+
+        .form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .example-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .field-value {
+            color: #667eea;
+            font-weight: normal;
+            margin-left: 5px;
+        }
+
+        .debug-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .optional::after {
+            content: " (opsional)";
+            color: #6c757d;
+            font-weight: normal;
+            font-size: 0.9em;
+        }
+
+        .method-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎫 Konversi Chat WhatsApp ke Formulir Ticket</h1>
+    
+    <div class="container">
+        <!-- Input Section -->
+        <div class="card">
+            <div class="form-header">
+                <h2>📱 Input Chat WhatsApp</h2>
+                <button class="example-btn" onclick="loadExample()">Contoh</button>
+            </div>
+            <textarea id="chatInput" placeholder="Tempel chat WhatsApp di sini... Contoh:
+Nama: Erik
+Telepon: 0627717717
+Email: adasda@gmail.com
+Kategori: Teknis
+Judul: adasda.sql
+Detail: adasda.sql"></textarea>
+            <button class="btn" onclick="parseChat()">🔄 Parse Chat</button>
+            <button class="btn btn-secondary" onclick="resetForm()">🗑️ Reset Form</button>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="apiUrl">🔗 API Endpoint URL: <span class="method-badge">POST</span></label>
+                <input type="url" id="apiUrl" placeholder="http://127.0.0.1:8000/api/tickets" value="http://127.0.0.1:8000/api/tickets">
+            </div>
+
+            <!-- Debug Info -->
+            <div id="debugInfo" class="debug-info" style="display: none;">
+                <strong>Debug Info:</strong>
+                <div id="debugContent"></div>
+            </div>
+        </div>
+
+        <!-- Output Section -->
+        <div class="card">
+            <h2>📋 Formulir Ticket</h2>
+            
+            <div id="formContainer">
+                <div class="form-group">
+                    <label for="reporter_name" class="required">Nama Pelapor: <span class="field-value" id="reporter_name_value">-</span></label>
+                    <input type="text" id="reporter_name" name="reporter_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone" class="required">Nomor Telepon: <span class="field-value" id="phone_value">-</span></label>
+                    <input type="tel" id="phone" name="phone" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email" class="required">Email: <span class="field-value" id="email_value">-</span></label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="category" class="optional">Kategori: <span class="field-value" id="category_value">-</span></label>
+                    <input type="text" id="category" name="category" placeholder="Masukkan kategori (contoh: Teknis, Billing, Akun, dll)">
+                </div>
+                
+                <div class="form-group">
+                    <label for="title" class="required">Judul Ticket: <span class="field-value" id="title_value">-</span></label>
+                    <input type="text" id="title" name="title" placeholder="Masukkan judul masalah" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="detail" class="required">Detail Masalah: <span class="field-value" id="detail_value">-</span></label>
+                    <textarea id="detail" name="detail" rows="4" placeholder="Jelaskan detail masalah yang dialami..." required></textarea>
+                </div>
+            </div>
+
+            <button class="btn btn-success" onclick="submitToAPI()">🚀 POST ke API</button>
+            <button class="btn btn-secondary" onclick="toggleDebug()">🐛 Debug</button>
+            
+            <h3>📊 Data yang akan dikirim (JSON Body):</h3>
+            <div id="jsonPreview" class="result">
+                Data akan muncul di sini setelah parsing...
+            </div>
+
+            <h3>🔗 Request Details:</h3>
+            <div id="requestDetails" class="url-preview">
+                Method: POST<br>
+                Content-Type: application/json<br>
+                URL: <span id="requestUrl"></span>
+            </div>
+
+            <div id="statusMessage" class="status" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Fungsi untuk memuat contoh chat
+        function loadExample() {
+            const exampleChat = `Nama: Erik
+Telepon: 0627717717
+Email: adasda@gmail.com
+Kategori: Teknis
+Judul: adasda.sql
+Detail: adasda.sql`;
+            
+            document.getElementById('chatInput').value = exampleChat;
+            parseChat();
+        }
+
+        // Fungsi untuk parsing chat WhatsApp - DIPERBAIKI
+        function parseChat() {
+            const chatInput = document.getElementById('chatInput').value;
+            if (!chatInput.trim()) {
+                showStatus('❌ Silakan masukkan chat WhatsApp terlebih dahulu!', 'error');
+                return;
+            }
+
+            // Pattern matching yang DIPERBAIKI
+            const patterns = {
+                reporter_name: /nama\s*:?\s*([^\n\r]+)/i,
+                // PERBAIKAN: Regex untuk telepon yang lebih akurat
+                phone: /telepon\s*:?\s*([^\n\r]+)/i,
+                email: /email\s*:?\s*([^\n\r]+)/i,
+                category: /kategori\s*:?\s*([^\n\r]+)/i,
+                title: /judul\s*:?\s*([^\n\r]+)/i,
+                detail: /detail\s*:?\s*([^\n\r]+)/i
+            };
+
+            const extractedData = {};
+            const debugInfo = [];
+
+            // Ekstrak data dari chat - LOGIKA DIPERBAIKI
+            for (const [field, pattern] of Object.entries(patterns)) {
+                const match = chatInput.match(pattern);
+                debugInfo.push(`${field}: ${match ? 'MATCH - ' + match[0] : 'NO MATCH'}`);
+                
+                if (match && match[1]) {
+                    // Ambil group 1 yang berisi nilai setelah ":"
+                    const value = match[1].trim();
+                    extractedData[field] = value;
+                    debugInfo.push(`  -> Value: "${value}"`);
+                }
+            }
+
+            // Debug info
+            document.getElementById('debugContent').innerHTML = debugInfo.join('<br>');
+            
+            console.log('Data yang diekstrak:', extractedData);
+            console.log('Debug Info:', debugInfo);
+
+            // Isi form dengan data yang diekstrak
+            document.getElementById('reporter_name').value = extractedData.reporter_name || '';
+            document.getElementById('phone').value = extractedData.phone || '';
+            document.getElementById('email').value = extractedData.email || '';
+            document.getElementById('category').value = extractedData.category || '';
+            document.getElementById('title').value = extractedData.title || '';
+            document.getElementById('detail').value = extractedData.detail || '';
+
+            // Update field values display
+            updateFieldValues();
+
+            // Update preview
+            updateJsonPreview();
+            updateRequestDetails();
+
+            showStatus('✅ Data berhasil di-parse dari chat!', 'success');
+        }
+
+        // Fungsi untuk update nilai field yang ditampilkan
+        function updateFieldValues() {
+            document.getElementById('reporter_name_value').textContent = document.getElementById('reporter_name').value || '-';
+            document.getElementById('phone_value').textContent = document.getElementById('phone').value || '-';
+            document.getElementById('email_value').textContent = document.getElementById('email').value || '-';
+            document.getElementById('category_value').textContent = document.getElementById('category').value || '-';
+            document.getElementById('title_value').textContent = document.getElementById('title').value || '-';
+            document.getElementById('detail_value').textContent = document.getElementById('detail').value ? '✓' : '-';
+        }
+
+        // Fungsi untuk reset form
+        function resetForm() {
+            document.getElementById('chatInput').value = '';
+            document.getElementById('reporter_name').value = '';
+            document.getElementById('phone').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('category').value = '';
+            document.getElementById('title').value = '';
+            document.getElementById('detail').value = '';
+            document.getElementById('jsonPreview').textContent = 'Data akan muncul di sini setelah parsing...';
+            document.getElementById('requestUrl').textContent = '';
+            document.getElementById('debugInfo').style.display = 'none';
+            updateFieldValues();
+            hideStatus();
+        }
+
+        // Fungsi untuk toggle debug info
+        function toggleDebug() {
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Fungsi untuk update preview JSON
+        function updateJsonPreview() {
+            const formData = getFormData();
+            document.getElementById('jsonPreview').textContent = 
+                JSON.stringify(formData, null, 2);
+            
+            updateFieldValues();
+        }
+
+        // Fungsi untuk update request details
+        function updateRequestDetails() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            document.getElementById('requestUrl').textContent = apiUrl;
+        }
+
+        // Fungsi untuk mendapatkan data form
+        function getFormData() {
+            return {
+                reporter_name: document.getElementById('reporter_name').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                category: document.getElementById('category').value,
+                title: document.getElementById('title').value,
+                detail: document.getElementById('detail').value
+            };
+        }
+
+        // Fungsi untuk submit ke API - DIUBAH MENJADI POST
+        async function submitToAPI() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const formData = getFormData();
+
+            // Validasi form - KATEGORI TIDAK DIVALIDASI LAGI
+            if (!validateForm()) {
+                return;
+            }
+
+            if (!apiUrl) {
+                showStatus('❌ Silakan masukkan URL API endpoint!', 'error');
+                return;
+            }
+
+            try {
+                showStatus('🔄 Mengirim data ke API...', 'success');
+
+                // Kirim POST request dengan JSON body
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showStatus('✅ Data berhasil dikirim ke API!', 'success');
+                    document.getElementById('jsonPreview').textContent = 
+                        '✅ RESPONSE API:\n' + JSON.stringify(result, null, 2);
+                } else {
+                    // Coba baca error message dari response
+                    let errorMessage = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorResult = await response.json();
+                        errorMessage += ` - ${JSON.stringify(errorResult)}`;
+                    } catch (e) {
+                        // Jika response bukan JSON, gunakan status text
+                        errorMessage += ` - ${response.statusText}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+            } catch (error) {
+                showStatus('❌ Gagal mengirim data ke API: ' + error.message, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        // Fungsi untuk validasi form - KATEGORI DIHAPUS DARI VALIDASI
+        function validateForm() {
+            const requiredFields = [
+                'reporter_name', 'phone', 'email', 'title', 'detail'
+            ];
+
+            for (const fieldId of requiredFields) {
+                const field = document.getElementById(fieldId);
+                if (!field.value.trim()) {
+                    showStatus(`❌ Field ${field.labels[0].textContent} harus diisi!`, 'error');
+                    field.focus();
+                    return false;
+                }
+            }
+
+            // Validasi email
+            const email = document.getElementById('email').value;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showStatus('❌ Format email tidak valid!', 'error');
+                document.getElementById('email').focus();
+                return false;
+            }
+
+            return true;
+        }
+
+        // Fungsi untuk menampilkan status
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+            statusElement.style.display = 'block';
+            
+            // Auto hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    hideStatus();
+                }, 5000);
+            }
+        }
+
+        // Fungsi untuk menyembunyikan status
+        function hideStatus() {
+            document.getElementById('statusMessage').style.display = 'none';
+        }
+
+        // Auto-update JSON preview ketika form berubah
+        document.querySelectorAll('#formContainer input, #formContainer textarea').forEach(input => {
+            input.addEventListener('input', function() {
+                updateJsonPreview();
+                updateRequestDetails();
+                hideStatus();
+            });
+        });
+
+        // Update request details ketika API URL berubah
+        document.getElementById('apiUrl').addEventListener('input', updateRequestDetails);
+
+        // Inisialisasi
+        document.addEventListener('DOMContentLoaded', function() {
+            updateJsonPreview();
+            updateRequestDetails();
+            updateFieldValues();
+        });
+    </script>
+</body>
+</html>
