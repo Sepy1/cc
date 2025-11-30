@@ -15,6 +15,22 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+
+                    {{-- Admin menu --}}
+                    @if(Auth::check() && (Auth::user()->role ?? '') === 'admin')
+                        <x-nav-link :href="route('admin.tickets.index')" :active="request()->routeIs('admin.tickets.*')">
+                            {{ __('Daftar Tiket') }}
+                        </x-nav-link>
+
+                        <x-nav-link :href="route('admin.reports.index')" :active="request()->routeIs('admin.reports.*')">
+                            {{ __('Laporan') }}
+                        </x-nav-link>
+                    @endif
+
+                    {{-- Profile link --}}
+                    <x-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">
+                        {{ __('Profile') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -69,6 +85,22 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
+            </x-responsive-nav-link>
+
+            {{-- Admin responsive links --}}
+            @if(Auth::check() && (Auth::user()->role ?? '') === 'admin')
+                <x-responsive-nav-link :href="route('admin.tickets.index')" :active="request()->routeIs('admin.tickets.*')">
+                    {{ __('Daftar Tiket') }}
+                </x-responsive-nav-link>
+
+                <x-responsive-nav-link :href="route('admin.reports.index')" :active="request()->routeIs('admin.reports.*')">
+                    {{ __('Laporan') }}
+                </x-responsive-nav-link>
+            @endif
+
+            {{-- Profile responsive link --}}
+            <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">
+                {{ __('Profile') }}
             </x-responsive-nav-link>
         </div>
 

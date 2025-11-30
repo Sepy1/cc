@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Auth;
 // Alias controllers
 use App\Http\Controllers\Admin\TicketAdminController as AdminTicketController;
 use App\Http\Controllers\Officer\TicketController as OfficerTicketController;
+use App\Http\Controllers\Admin\ReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,7 +46,7 @@ Route::middleware(['auth', 'role:admin'])
     ->name('admin.')
     ->group(function () {
 
-        // List
+        // Tickets - list
         Route::get('/tickets', [AdminTicketController::class, 'index'])
             ->name('tickets.index');
 
@@ -87,6 +88,18 @@ Route::middleware(['auth', 'role:admin'])
         Route::post('/tickets/{ticket}/status', [AdminTicketController::class, 'changeStatus'])
             ->whereNumber('ticket')
             ->name('tickets.change_status');
+
+        // Laporan (reports)
+        Route::get('/reports', [ReportController::class, 'index'])
+            ->name('reports.index');
+
+        // Export: XLS/XLSX (if implemented)
+        Route::get('/reports/export', [ReportController::class, 'export'])
+            ->name('reports.export');
+
+        // Export: CSV fallback (no external package required)
+        Route::get('/reports/export-csv', [ReportController::class, 'exportCsv'])
+            ->name('reports.export_csv');
     });
 
 /*
