@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class TicketReply extends Model
 {
-    protected $fillable = ['ticket_id', 'user_id', 'message'];
+    protected $fillable = [
+        'ticket_id',
+        'user_id',
+        'message',
+        'attachment', // pastikan ada
+    ];
 
     public function user()
     {

@@ -50,8 +50,10 @@ class TicketController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $ticket->load('replies.user', 'events.user'); // jika relasi ada
-        return view('officer.tickets.show', compact('ticket'));
+        $ticket->load(['replies.user', 'assignedTo', 'events.user']); // jika relasi ada
+        return view('officer.tickets.show', [
+            'ticket' => $ticket,
+        ]);
     }
 
     /**

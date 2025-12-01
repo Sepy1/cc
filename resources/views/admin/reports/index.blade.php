@@ -93,61 +93,36 @@
 
   {{-- Status distribution + recent table --}}
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="bg-white rounded-2xl shadow p-5 border border-gray-100">
-      <h4 class="text-sm font-medium text-gray-800 mb-3">Distribusi Status</h4>
-      <div class="w-full h-56">
-        <canvas id="statusDoughnut"></canvas>
-      </div>
-
-      <div class="mt-4 grid grid-cols-1 gap-2 text-sm">
-        @foreach([ 'Open' => $openCount, 'Progress' => $progressCount, 'Resolved' => $resolvedCount, 'Closed' => $closedCount ] as $label => $val)
-          <div class="flex items-center justify-between">
-            <div class="text-gray-600">{{ $label }}</div>
-            <div class="font-semibold text-gray-800">{{ $val }}</div>
-          </div>
-        @endforeach
-      </div>
-    </div>
-
-    <div class="lg:col-span-2 bg-white rounded-2xl shadow p-4 border border-gray-100 overflow-x-auto">
+    <div class="lg:col-span-3 bg-white rounded-2xl shadow p-4 border border-gray-100 overflow-x-auto">
       <div class="p-4 border-b">
-        <h3 class="font-medium text-gray-900">Tiket Terbaru</h3>
-
-         <div class="mt-3 md:mt-0 md:ml-auto text-sm text-gray-600">
-    Periode:
-    @if(($month ?? 'all') === 'all' && ($year ?? 'all') === 'all')
-        <strong>Semua</strong>
-    @elseif(($month ?? 'all') === 'all')
-        <strong>Semua {{ $year }}</strong>
-    @elseif(($year ?? 'all') === 'all')
-        <strong>{{ \Carbon\Carbon::create()->month($month)->translatedFormat('F') }} Semua Tahun</strong>
-    @else
-        <strong>{{ \Carbon\Carbon::create()->month($month)->translatedFormat('F') }} {{ $year }}</strong>
-    @endif
-</div>
-
-<a href="{{ route('admin.reports.export_csv', ['month' => $month ?? 'all', 'year' => $year ?? 'all']) }}"
-   class="inline-flex items-center px-3 py-2 bg-white border rounded-md text-sm text-gray-700 hover:bg-gray-50"
-   title="Download CSV">
-    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0l3-3m-3 3l-3-3M21 21H3"/>
-    </svg>
-    Download CSV
-</a>
-
-     <div class="flex items-center gap-3">
-        {{-- Export button: kirimkan month/year sekarang sebagai param --}}
-        <a href="{{ route('admin.reports.export', ['month' => $month ?? 'all', 'year' => $year ?? 'all']) }}"
-           class="inline-flex items-center px-3 py-2 bg-white border rounded-md text-sm text-gray-700 hover:bg-gray-50"
-           title="Download Excel">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v12m0 0l3-3m-3 3l-3-3M21 21H3"/>
-            </svg>
-            Download XLSX
-        </a>
-    </div>  
-    
-    </div>
+        <div class="flex items-center gap-4">
+          <div class="flex-1 min-w-0">
+            <h3 class="text-lg font-medium text-gray-900">Tiket Terbaru</h3>
+            <div class="text-sm text-gray-600">
+              Periode:
+              @if(($month ?? 'all') === 'all' && ($year ?? 'all') === 'all')
+                  <strong>Semua</strong>
+              @elseif(($month ?? 'all') === 'all')
+                  <strong>Semua {{ $year }}</strong>
+              @elseif(($year ?? 'all') === 'all')
+                  <strong>{{ \Carbon\Carbon::create()->month($month)->translatedFormat('F') }} Semua Tahun</strong>
+              @else
+                  <strong>{{ \Carbon\Carbon::create()->month($month)->translatedFormat('F') }} {{ $year }}</strong>
+              @endif
+            </div>
+          </div>
+          <div class="shrink-0">
+            <a href="{{ route('admin.reports.export_csv', ['month' => request('month', $month ?? 'all'), 'year' => request('year', $year ?? 'all')]) }}"
+               class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              Download CSV
+            </a>
+          </div>
+        </div>
+      </div>
 
       <table class="min-w-full divide-y divide-gray-200 text-sm">
         <thead class="bg-gray-50">
@@ -197,48 +172,11 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  // Data from controller. Pastikan controller mengirim array / collection berikut:
-  // $ticketsByStatus = ['open' => 10, 'progress' => 5, 'resolved' => 20, 'closed' => 8];
-  // $ticketsByDay = [ ['date' => '2025-11-01', 'count' => 2], ... ] untuk tren.
-
+  // Data from controller.
 @php
-    // fallback dibuat WITHIN PHP to avoid inline array literals inside Blade directives
-    $ticketsByStatus = $ticketsByStatus ?? [
-        'open'     => $openCount ?? 0,
-        'progress'  => $progressCount ?? 0,
-        'resolved' => $resolvedCount ?? 0,
-        'closed'   => $closedCount ?? 0,
-    ];
     $ticketsByDay = $ticketsByDay ?? [];
 @endphp
-
-const ticketsByStatus = @json($ticketsByStatus);
 const ticketsByDay = @json($ticketsByDay);
-
-  // Doughnut chart (status)
-  (function(){
-    const ctx = document.getElementById('statusDoughnut').getContext('2d');
-    const labels = Object.keys(ticketsByStatus).map(k => k.charAt(0).toUpperCase() + k.slice(1));
-    const data = Object.values(ticketsByStatus);
-
-    new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels,
-        datasets: [{
-          data,
-          // colors intentionally left for Chart.js defaults; feel free to customize in CSS/option
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom' }
-        }
-      }
-    });
-  })();
 
   // Line chart (trend)
   (function(){
@@ -248,23 +186,11 @@ const ticketsByDay = @json($ticketsByDay);
 
     new Chart(ctx, {
       type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Tiket per hari',
-          data,
-          fill: true,
-          tension: 0.3,
-          pointRadius: 3,
-        }]
-      },
+      data: { labels, datasets: [{ label: 'Tiket per hari', data, fill: true, tension: 0.3, pointRadius: 3 }] },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: {
-          x: { display: true },
-          y: { beginAtZero: true }
-        },
+        scales: { x: { display: true }, y: { beginAtZero: true } },
         plugins: { legend: { display: false } }
       }
     });

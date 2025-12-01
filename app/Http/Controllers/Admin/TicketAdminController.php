@@ -11,13 +11,13 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule as ValidationRule;
 use Illuminate\Support\Facades\DB as DBFacade;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Exception;
 use App\Models\Ticket;
-use Illuminate\Support\Str;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 use App\Models\TicketReply;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 use App\Models\TicketEvent;
 
 class TicketAdminController extends Controller
@@ -83,13 +83,24 @@ class TicketAdminController extends Controller
     // method show
     public function show(Ticket $ticket)
     {
+        $ticket->load(['replies.user']);
+
+        // ambil riwayat dari ticket_events
+        $history = DB::table('ticket_events')
+            ->where('ticket_id', $ticket->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // jika Anda sudah punya model TicketEvent, bisa gunakan relation:
+        // $history = $ticket->events()->latest()->get();
+
         // ambil semua user dengan role officer
         $officers = User::where('role', 'officer')->orderBy('name')->get();
 
         // eager load replies and assignedTo if relation exists
         $ticket->loadMissing('replies', 'assignedTo', 'events');
 
-        return view('admin.tickets.show', compact('ticket', 'officers'));
+        return view('admin.tickets.show', compact('ticket','history', 'officers'));
     }
 
     public function edit(Ticket $ticket)
@@ -178,34 +189,31 @@ class TicketAdminController extends Controller
     public function reply(Request $request, Ticket $ticket)
     {
         $request->validate([
-            'message' => 'required|string|max:5000',
+            'message'     => 'nullable|string|max:5000',
+            'attachment'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx,xls,xlsx,zip|max:5120',
         ]);
+
+        $path = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $name = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
+            $ext  = $file->getClientOriginalExtension();
+            $path = $file->storeAs('ticket_attachments', "{$name}.{$ext}", 'public'); // storage/app/public/ticket_attachments
+        }
 
         $reply = TicketReply::create([
-            'ticket_id'   => $ticket->id,
-            'user_id'     => Auth::id(), // admin yang sedang login
-            'message'     => $request->message,
+            'ticket_id'  => $ticket->id,
+            'user_id'    => Auth::id(),
+            'message'    => $request->message,
+            'attachment' => $path,
         ]);
 
-        // Opsional: update updated_at ticket
+        // update updated_at tiket
         $ticket->touch();
-
-        // record event: replied
-        if (class_exists(TicketEvent::class)) {
-            TicketEvent::create([
-                'ticket_id' => $ticket->id,
-                'type'      => 'replied',
-                'meta'      => json_encode([
-                    'reply_id' => $reply->id,
-                    'snippet'  => \Illuminate\Support\Str::limit($request->message, 200),
-                ]),
-                'user_id'   => auth()->id(),
-            ]);
-        }
 
         return redirect()
             ->route('admin.tickets.show', $ticket->id)
-            ->with('success', 'Balasan berhasil dikirim.');
+            ->with('success', 'Balasan tersimpan' . ($path ? ' dengan lampiran.' : '.'));
     }
 
     /**
@@ -214,62 +222,55 @@ class TicketAdminController extends Controller
     public function assign(Request $request, Ticket $ticket)
     {
         $data = $request->validate([
-            'officer_id' => ['required', 'integer', Rule::exists('users', 'id')],
+            'user_id' => ['required','integer','exists:users,id'],
         ]);
 
-        $officer = User::where('id', $data['officer_id'])->where('role', 'officer')->first();
+        $assignee = \App\Models\User::findOrFail($data['user_id']);
 
-        if (! $officer) {
-            return redirect()->route('admin.tickets.show', $ticket->id)
-                             ->with('error', 'Officer tidak ditemukan atau tidak memiliki role officer.');
-        }
-
-        DB::beginTransaction();
         try {
-            $ticket->assigned_to = $officer->id;
+            DB::beginTransaction();
 
-            if (Schema::hasColumn($ticket->getTable(), 'assigned_at')) {
-                $ticket->assigned_at = now();
+            $ticket->assigned_to = $assignee->id;
+            $ticket->assigned_at = now();
+            if (in_array($ticket->status, ['open','rejected'])) {
+                $ticket->status = 'pending';
             }
-
             $ticket->save();
 
-            if (class_exists(TicketEvent::class)) {
-                TicketEvent::create([
+            // catat riwayat assign
+            try {
+                DB::table('ticket_events')->insert([
                     'ticket_id' => $ticket->id,
+                    'user_id'   => Auth::id(),
                     'type'      => 'assigned',
                     'meta'      => json_encode([
-                        'assigned_to' => $officer->id,
-                        'assigned_to_name' => $officer->name,
+                        'assigned_to'      => $assignee->id,
+                        'assigned_to_name' => $assignee->name,
                     ]),
-                    'user_id'   => auth()->id(),
+                    'created_at'=> now(),
+                    'updated_at'=> now(),
                 ]);
-            }
-
-            if (class_exists(TicketAssigned::class)) {
-                try {
-                    Mail::to($officer->email)->send(new TicketAssigned($ticket, $officer));
-                } catch (\Throwable $e) {
-                    // jangan gagalkan assign karena email gagal
-                    \Log::warning('Kirim email TicketAssigned gagal: ' . $e->getMessage());
-                }
+            } catch (\Throwable $e) {
+                Log::warning('ticket_events_insert_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
             }
 
             DB::commit();
-
-            return redirect()->route('admin.tickets.show', $ticket->id)
-                             ->with('success', 'Tiket berhasil diassign ke ' . $officer->name . '.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            \Log::error('Assign ticket failed: ' . $e->getMessage(), [
-                'ticket_id' => $ticket->id,
-                'officer_id' => $data['officer_id'],
-                'user_id' => auth()->id(),
-            ]);
-
-            return redirect()->route('admin.tickets.show', $ticket->id)
-                             ->with('error', 'Terjadi kesalahan saat assign tiket. Silakan coba lagi.');
+            Log::error('assign_ticket_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
+            return back()->with('error', 'Gagal assign tiket. Detail: '.$e->getMessage());
         }
+
+        // kirim email jika perlu (dibuat non-blocking)
+        try {
+            if (class_exists(\App\Mail\TicketAssigned::class) && !empty($assignee->email)) {
+                \Illuminate\Support\Facades\Mail::to($assignee->email)->queue(new \App\Mail\TicketAssigned($ticket));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('assign_mail_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
+        }
+
+        return back()->with('success', 'Tiket berhasil di-assign ke '.$assignee->name);
     }
 
     /**

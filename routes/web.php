@@ -75,12 +75,12 @@ Route::middleware(['auth', 'role:admin'])
             ->name('tickets.destroy');
 
         // Assign officer
-        Route::post('/tickets/{ticket}/assign', [AdminTicketController::class, 'assign'])
+        Route::post('/tickets/{ticket}/assign', [\App\Http\Controllers\Admin\TicketAdminController::class, 'assign'])
             ->whereNumber('ticket')
             ->name('tickets.assign');
 
         // Admin reply
-        Route::post('/tickets/{ticket}/reply', [AdminTicketController::class, 'reply'])
+        Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\Admin\TicketAdminController::class, 'reply'])
             ->whereNumber('ticket')
             ->name('tickets.reply');
 
@@ -121,8 +121,7 @@ Route::middleware(['auth', 'role:officer'])
             ->name('tickets.index');
 
         // Show ticket detail for officer (id numeric)
-        Route::get('/tickets/{ticket}', [OfficerTicketController::class, 'show'])
-            ->whereNumber('ticket')
+        Route::get('tickets/{ticket}', [\App\Http\Controllers\Officer\TicketController::class, 'show'])
             ->name('tickets.show');
 
         // Officer reply

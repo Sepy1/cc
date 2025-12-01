@@ -21,6 +21,7 @@ class Ticket extends Model
         'detail',
         'status',
         'assigned_to',
+        'assigned_at',
         'tindak_lanjut',
     ];
 
@@ -29,6 +30,7 @@ class Ticket extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'assigned_to' => 'integer',
+        'assigned_at' => 'datetime',
     ];
 
     public function replies(): HasMany

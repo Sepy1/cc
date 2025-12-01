@@ -9,6 +9,8 @@
         'resolved' => 'bg-blue-100 text-blue-800',
         'rejected' => 'bg-red-100 text-red-800',
     ];
+    // tambah default flag
+    $readonly = $readonly ?? false;
 @endphp
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -51,7 +53,15 @@
                             {{ ucfirst($ticket->status ?? 'Unknown') }}
                         </span>
 
-                        
+                        {{-- Tombol Riwayat (open history modal) --}}
+                        <a href="#" class="open-history inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                           title="Lihat riwayat tiket">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Riwayat
+                        </a>
                     </div>
                 </div>
 
@@ -110,80 +120,108 @@
                 </div>
 
                 {{-- Komentar --}}
-                <div class="space-y-4">
-                    <h3 class="text-sm font-medium text-gray-700">Komentar</h3>
-
-                    {{-- cek jika variable adalah collection atau array sebelum count --}}
-@if ($ticket->replies && count($ticket->replies) > 0)
-    @foreach ($ticket->replies as $reply)
-        <li class="bg-white border border-gray-100 rounded-lg p-3">
-                                    <div class="flex items-start justify-between">
-                                        <div>
-                                            <div class="text-sm font-semibold text-gray-800">{{ $reply->author_name ?? $reply->user?->name ?? 'Staff' }}</div>
-                                            <div class="text-xs text-gray-400">{{ $reply->created_at?->format('d M Y H:i') }}</div>
-                                        </div>
+                <div class="bg-white border border-gray-100 rounded-lg">
+                    <div class="px-4 py-3 border-b">
+                        <h3 class="text-sm font-medium text-gray-700">Komentar</h3>
+                    </div>
+                    <div id="commentsScroll" class="px-4 py-4 space-y-4 overflow-y-auto" style="max-height: 48vh;">
+                        @forelse ($ticket->replies ?? [] as $reply)
+                            <div class="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <div class="text-sm font-semibold text-gray-800">{{ $reply->author_name ?? $reply->user?->name ?? 'Staff' }}</div>
+                                        <div class="text-xs text-gray-400">{{ $reply->created_at?->format('d M Y H:i') }}</div>
                                     </div>
+                                </div>
+                                @if(filled($reply->message))
                                     <div class="mt-2 text-sm text-gray-700 whitespace-pre-line">{{ $reply->message }}</div>
-                                </li>
-    @endforeach
-@else
-    <p>Belum ada balasan.</p>
-@endif
-
-{{-- atau gunakan cara Laravel yang lebih aman --}}
-@forelse ($ticket->replies ?? [] as $reply)
-                                <li class="bg-white border border-gray-100 rounded-lg p-3">
-                                    <div class="flex items-start justify-between">
-                                        <div>
-                                            <div class="text-sm font-semibold text-gray-800">{{ $reply->author_name ?? $reply->user?->name ?? 'Staff' }}</div>
-                                            <div class="text-xs text-gray-400">{{ $reply->created_at?->format('d M Y H:i') }}</div>
-                                        </div>
+                                @endif
+                                @if(!empty($reply->attachment))
+                                    <div class="mt-2 flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                        </svg>
+                                        <a class="text-sm text-indigo-600 hover:underline" target="_blank"
+                                           href="{{ asset('storage/' . $reply->attachment) }}">
+                                           {{ basename($reply->attachment) }}
+                                        </a>
                                     </div>
-                                    <div class="mt-2 text-sm text-gray-700 whitespace-pre-line">{{ $reply->message }}</div>
-                                </li>
-@empty
-    <div class="text-sm text-gray-500">Belum ada aktivitas atau balasan untuk tiket ini.</div>
-@endforelse
+                                @endif
+                            </div>
+                        @empty
+                            <div class="text-sm text-gray-500">Belum ada aktivitas atau balasan untuk tiket ini.</div>
+                        @endforelse
+                    </div>
                 </div>
 
                 {{-- Reply form --}}
-                <div>
-                    <form action="{{ route('admin.tickets.reply', $ticket->id) }}" method="POST" class="space-y-3">
+                <div id="replySection">
+                    {{-- Form Reply (existing) --}}
+                    <form action="{{ route('admin.tickets.reply', $ticket->id) }}" method="POST" enctype="multipart/form-data" class="mt-4">
                         @csrf
-                        <label class="sr-only" for="message">Balasan</label>
-                        <textarea name="message" id="message" rows="4" required
-                            class="w-full border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            placeholder="Tulis Komentar"></textarea>
+    
+    <div>
+        <label for="message" class="block text-sm font-medium text-gray-700 mb-2">Balasan</label>
+        <textarea
+            name="message"
+            id="message"
+            rows="4"
+            class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500"
+            placeholder="Tulis balasan (opsional)"></textarea>
+        @error('message')
+            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+        @enderror
+    </div>
 
-                        <div class="mt-3 flex items-center gap-3">
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
-                                Kirim Balasan
-                            </button>
+    <div class="mt-3">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Lampiran (opsional)</label>
+        <input
+            type="file"
+            name="attachment"
+            id="attachment"
+            class="hidden"
+            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.zip">
 
-                            {{-- History button: opens timeline modal --}}
-                            <button type="button" class="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-md text-sm hover:bg-gray-50 open-history" title="Lihat Riwayat Tiket">
-                                <svg class="h-4 w-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h4l3 8 4-16 3 6h4"></path>
-                                </svg>
-                                History Tiket
-                            </button>
-                        </div>
-                    </form>
+        {{-- Row: pilih lampiran (kiri) + kirim (kanan) --}}
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-3">
+                <label for="attachment"
+                       class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium cursor-pointer hover:bg-indigo-700">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                    </svg>
+                    Pilih Lampiran
+                </label>
+                <span id="attachmentName" class="text-sm text-gray-600 truncate max-w-[40ch]">Belum ada file</span>
+                <button type="button" id="clearAttachment" class="hidden text-xs text-gray-500 hover:text-gray-700 underline">Bersihkan</button>
+            </div>
+
+            {{-- Submit tetap di kanan --}}
+            <button type="submit"
+                    class="ml-auto inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                Kirim Balasan
+            </button>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-2">Max 5MB. Format: JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, ZIP</p>
+        @error('attachment')
+            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+        @enderror
+    </div>
+
                 </div>
             </div>
 
             {{-- Sidebar actions --}}
             <aside class="space-y-4">
+                @unless($readonly)
                 <div class="p-4 bg-white border border-gray-100 rounded-lg">
                     <h4 class="text-sm font-medium text-gray-700">Tindakan</h4>
-
                     <div class="mt-3 space-y-3">
-                        {{-- Edit trigger (open modal) --}}
                         <a href="#" class="block w-full text-center px-3 py-2 border border-gray-200 rounded-md text-sm hover:bg-gray-50 open-edit">
                             Edit Tiket
                         </a>
-
-                        {{-- Delete --}}
                         <form action="{{ route('admin.tickets.destroy', $ticket->id) }}" method="POST" onsubmit="return confirm('Hapus tiket ini?');">
                             @csrf
                             @method('DELETE')
@@ -197,35 +235,25 @@
                 {{-- Assign --}}
                 <div class="p-4 bg-white border border-gray-100 rounded-lg">
                     <h4 class="text-sm font-medium text-gray-700">Assign ke Officer</h4>
-                    <form action="{{ route('admin.tickets.assign', $ticket->id) }}" method="POST" class="mt-3 space-y-2">
+                    <form action="{{ route('admin.tickets.assign', $ticket->id) }}" method="POST" class="space-y-3">
                         @csrf
-                        <select name="officer_id" required class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm">
-                            <option value="">-- Pilih Officer --</option>
-                            @if(isset($officers) && $officers->count())
-                                @foreach($officers as $o)
-                                    <option value="{{ $o->id }}" @if(($ticket->assigned_to ?? null) == $o->id) selected @endif>
-                                        {{ $o->name }} 
-                                    </option>
-                                @endforeach
-                            @else
-                                <option value="" disabled>Tidak ada officer tersedia</option>
-                            @endif
+                        <label class="block text-sm text-gray-700 mb-1">Assign ke petugas</label>
+                        <select name="user_id" class="w-full px-3 py-2 border rounded-md" required>
+                            @foreach($officers as $u)
+                                <option value="{{ $u->id }}" @selected($ticket->assigned_to == $u->id)>{{ $u->name }}</option>
+                            @endforeach
                         </select>
-
-                        <button type="submit" class="w-full inline-flex justify-center px-3 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">
-                            Assign
-                        </button>
+                        <button type="submit" class="px-3 py-2 bg-indigo-600 text-white rounded-md">Assign</button>
                     </form>
                 </div>
+                @endunless
 
-                {{-- Info kecil --}}
+                {{-- Info kecil (tetap tampil) --}}
                 <div class="p-4 bg-gray-50 border border-gray-100 rounded-lg text-sm text-gray-500">
                     <div><strong>Dibuat</strong></div>
                     <div class="mt-1 text-gray-700">{{ $ticket->created_at?->format('d M Y H:i') ?? '-' }}</div>
-
                     <div class="mt-3"><strong>Updated</strong></div>
                     <div class="mt-1 text-gray-700">{{ $ticket->updated_at?->format('d M Y H:i') ?? '-' }}</div>
-
                     <div class="mt-3"><strong>Assigned to</strong></div>
                     <div class="mt-1 text-gray-700">{{ optional($ticket->assignedTo)->name ?? ($ticket->assigned_to ? 'User #' . $ticket->assigned_to : '-') }}</div>
                 </div>
@@ -567,8 +595,34 @@
 
     // Optional: auto-focus message textarea on page load
     document.addEventListener('DOMContentLoaded', function () {
-        const msg = document.getElementById('message');
-        if (msg) msg.focus();
+        // Jangan auto-focus agar halaman tidak auto-scroll ke bawah saat load
+        const msg = document.getElementById('message'); // dipakai nanti jika perlu, tanpa focus
+
+        // Attachment UI
+        const fileInput = document.getElementById('attachment');
+        const fileName  = document.getElementById('attachmentName');
+        const clearBtn  = document.getElementById('clearAttachment');
+
+        function updateName() {
+            const name = fileInput && fileInput.files && fileInput.files.length ? fileInput.files[0].name : 'Belum ada file';
+            if (fileName) fileName.textContent = name;
+            if (clearBtn) clearBtn.classList.toggle('hidden', !(fileInput && fileInput.value));
+        }
+
+        // Komentar scroll box: auto height + auto scroll bottom
+        const commentsBox  = document.getElementById('commentsScroll');
+        const replySection = document.getElementById('replySection');
+        function resizeCommentsBox() {
+            if (!commentsBox) return;
+            const top = commentsBox.getBoundingClientRect().top; // jarak dari atas viewport
+            const reserve = (replySection ? replySection.offsetHeight : 0) + 24; // ruang untuk form + margin
+            const h = window.innerHeight - top - reserve;
+            commentsBox.style.maxHeight = (h > 220 ? h : 220) + 'px';
+        }
+        resizeCommentsBox();
+        window.addEventListener('resize', resizeCommentsBox);
+        // Auto scroll ke komentar terakhir (hanya dalam box)
+        if (commentsBox) commentsBox.scrollTop = commentsBox.scrollHeight;
     });
 
     // Status & Tindak Lanjut toggle logic
