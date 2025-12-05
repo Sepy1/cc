@@ -55,10 +55,30 @@ class TicketAdminController extends Controller
             'title'         => 'required|string|max:255',
             'detail'        => 'nullable|string',
             'status'        => 'nullable|string|in:open,pending,resolved,closed,rejected',
+            // pelapor & nasabah
+            'reporter_type' => 'required|in:nasabah,umum',
+            'id_ktp'           => 'nullable|string|max:100',
+            'nomor_rekening'   => 'nullable|string|max:100',
+            'nama_ibu'         => 'nullable|string|max:150',
+            'alamat'           => 'nullable|string|max:2000',
+            'kode_kantor'      => 'nullable|string|max:50',
+            'media_closing'    => 'nullable|in:whatsapp,telepon,offline',
+            // lampiran opsional (jika form admin menyertakan)
+            'attachment_ktp'   => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf',
+            'attachment_bukti' => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,zip',
         ]);
 
         $data['ticket_no'] = $this->generateTicketNo();
         $data['status'] = $data['status'] ?? 'open';
+        $data['is_nasabah'] = ($data['reporter_type'] === 'nasabah');
+
+        // simpan lampiran jika ada
+        if ($request->hasFile('attachment_ktp')) {
+            $data['attachment_ktp'] = $request->file('attachment_ktp')->store('tickets/ktp', 'public');
+        }
+        if ($request->hasFile('attachment_bukti')) {
+            $data['attachment_bukti'] = $request->file('attachment_bukti')->store('tickets/bukti', 'public');
+        }
 
         $ticket = Ticket::create($data);
 
@@ -115,6 +135,18 @@ class TicketAdminController extends Controller
             'detail' => 'nullable|string',
             'status' => ['required', Rule::in(['open','pending','resolved','closed','rejected'])],
             'assigned_to' => 'nullable|integer|exists:users,id',
+            // { changed code } pelapor & nasabah
+            'reporter_type' => 'required|in:nasabah,umum',
+            'id_ktp'           => 'nullable|string|max:100',
+            'nomor_rekening'   => 'nullable|string|max:100',
+            'nama_ibu'         => 'nullable|string|max:150',
+            'alamat'           => 'nullable|string|max:2000',
+            'kode_kantor'      => 'nullable|string|max:50',
+            // Ganti: media_closing wajib dan tambah opsi 'telephone' dan 'email'
+            'media_closing'    => 'required|in:whatsapp,telephone,email,offline',
+            // lampiran opsional
+            'attachment_ktp'   => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf',
+            'attachment_bukti' => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,zip',
         ];
 
         // jika memilih closed, tindak_lanjut wajib
@@ -130,14 +162,27 @@ class TicketAdminController extends Controller
         try {
             $originalStatus = $ticket->status;
 
+            // { changed code } set flag is_nasabah
+            $ticket->is_nasabah = (($data['reporter_type'] ?? $ticket->reporter_type) === 'nasabah');
+
             // simpan tindak_lanjut secara eksplisit bila ada
             if (!empty($data['tindak_lanjut'])) {
                 $ticket->tindak_lanjut = $data['tindak_lanjut'];
             }
 
-            // simpan field lain (jangan gunakan array_except, langsung assign)
+            // handle lampiran nasabah (replace jika diunggah baru)
+            if ($request->hasFile('attachment_ktp')) {
+                if ($ticket->attachment_ktp) \Storage::disk('public')->delete($ticket->attachment_ktp);
+                $ticket->attachment_ktp = $request->file('attachment_ktp')->store('tickets/ktp', 'public');
+            }
+            if ($request->hasFile('attachment_bukti')) {
+                if ($ticket->attachment_bukti) \Storage::disk('public')->delete($ticket->attachment_bukti);
+                $ticket->attachment_bukti = $request->file('attachment_bukti')->store('tickets/bukti', 'public');
+            }
+
+            // simpan field lain
             foreach ($data as $key => $value) {
-                if ($key !== 'tindak_lanjut' && $ticket->isFillable($key)) {
+                if (!in_array($key, ['tindak_lanjut','attachment_ktp','attachment_bukti']) && $ticket->isFillable($key)) {
                     $ticket->$key = $value;
                 }
             }
@@ -158,7 +203,6 @@ class TicketAdminController extends Controller
             }
 
             DB::commit();
-
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Admin ticket update failed', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);

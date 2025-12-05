@@ -13,15 +13,24 @@
         'umum'    => 'bg-gray-100 text-gray-700',
     ];
 
-    $me = auth()->id();
-    $myTicketIds = \App\Models\Ticket::where('assigned_to', $me)->pluck('id');
-    $notifQuery = \App\Models\TicketEvent::with(['user','ticket'])
-        ->whereIn('type', ['status_changed','replied'])
-        ->where('created_at', '>=', now()->subDay())
+    $seenAt = session('notif_seen_at_officer');
+    $myTicketIds = \App\Models\Ticket::where('assigned_to', auth()->id())->pluck('id');
+
+    $base = \App\Models\TicketEvent::with(['user','ticket'])
+        ->whereIn('type', ['status_changed','replied','assigned'])
         ->whereIn('ticket_id', $myTicketIds)
         ->orderBy('created_at','desc');
-    $notifCount = (clone $notifQuery)->count();
-    $notifications = (clone $notifQuery)->take(20)->get();
+
+    $unreadQuery = $seenAt
+        ? (clone $base)->where('created_at', '>', $seenAt)
+        : (clone $base)->where('created_at', '>=', now()->subDay());
+    $readQuery = $seenAt
+        ? (clone $base)->where('created_at', '<=', $seenAt)->where('created_at', '>=', now()->subDay())
+        : collect();
+
+    $notifCount = (clone $unreadQuery)->count();
+    $unread = (clone $unreadQuery)->take(20)->get();
+    $read   = $readQuery instanceof \Illuminate\Support\Collection ? collect() : (clone $readQuery)->take(20)->get();
 @endphp
 
 {{-- Topbar bell --}}
@@ -45,17 +54,18 @@
             </button>
         </div>
         <div class="max-h-80 overflow-y-auto">
-            @forelse($notifications as $ev)
+            @foreach($unread as $ev)
                 @php
                     $isStatus = $ev->type === 'status_changed';
+                    $isAssigned = $ev->type === 'assigned';
                     $actor = $ev->user?->name ?? 'Sistem';
                     $ticketNo = $ev->ticket?->ticket_no ?? ('#'.$ev->ticket_id);
                     $meta = is_array($ev->meta) ? $ev->meta : (is_string($ev->meta) ? (json_decode($ev->meta, true) ?: []) : []);
                     $label = $isStatus
                         ? ('Status → ' . ($meta['to'] ?? ($meta['status'] ?? '')))
-                        : 'Komentar baru';
+                        : ($isAssigned ? ('Tiket di-assign ke ' . ($meta['assigned_to_name'] ?? ('User #' . ($meta['assigned_to'] ?? '-')))) : 'Komentar baru');
                 @endphp
-                <a href="{{ route('officer.tickets.show', $ev->ticket_id) }}" class="block px-4 py-3 hover:bg-gray-50">
+                <a href="{{ route('officer.tickets.show', $ev->ticket_id) }}" class="block px-4 py-3 bg-indigo-50 hover:bg-indigo-100">
                     <div class="text-xs text-gray-400">{{ $ev->created_at?->diffForHumans() }}</div>
                     <div class="text-sm text-gray-800">{{ $label }} pada tiket {{ $ticketNo }}</div>
                     <div class="text-xs text-gray-500">oleh {{ $actor }}</div>
@@ -63,9 +73,35 @@
                         <div class="mt-1 text-xs text-gray-600 line-clamp-2">{{ $meta['snippet'] }}</div>
                     @endif
                 </a>
-            @empty
-                <div class="px-4 py-6 text-center text-sm text-gray-500">Tidak ada notifikasi baru.</div>
-            @endforelse
+            @endforeach
+
+            @if(($read instanceof \Illuminate\Support\Collection ? $read->count() : $read->count()) > 0)
+                <div class="px-4 py-2 text-xs text-gray-400 border-t">Sebelumnya</div>
+                @foreach($read as $ev)
+                    @php
+                        $isStatus = $ev->type === 'status_changed';
+                        $isAssigned = $ev->type === 'assigned';
+                        $actor = $ev->user?->name ?? 'Sistem';
+                        $ticketNo = $ev->ticket?->ticket_no ?? ('#'.$ev->ticket_id);
+                        $meta = is_array($ev->meta) ? $ev->meta : (is_string($ev->meta) ? (json_decode($ev->meta, true) ?: []) : []);
+                        $label = $isStatus
+                            ? ('Status → ' . ($meta['to'] ?? ($meta['status'] ?? '')))
+                            : ($isAssigned ? ('Tiket di-assign ke ' . ($meta['assigned_to_name'] ?? ('User #' . ($meta['assigned_to'] ?? '-')))) : 'Komentar baru');
+                    @endphp
+                    <a href="{{ route('officer.tickets.show', $ev->ticket_id) }}" class="block px-4 py-3 hover:bg-gray-50">
+                        <div class="text-xs text-gray-400">{{ $ev->created_at?->diffForHumans() }}</div>
+                        <div class="text-sm text-gray-800">{{ $label }} pada tiket {{ $ticketNo }}</div>
+                        <div class="text-xs text-gray-500">oleh {{ $actor }}</div>
+                        @if(!$isStatus && !empty($meta['snippet']))
+                            <div class="mt-1 text-xs text-gray-600 line-clamp-2">{{ $meta['snippet'] }}</div>
+                        @endif
+                    </a>
+                @endforeach
+            @else
+                @if($unread->isEmpty())
+                    <div class="px-4 py-6 text-center text-sm text-gray-500">Tidak ada notifikasi baru.</div>
+                @endif
+            @endif
         </div>
     </div>
 </div>
@@ -150,8 +186,19 @@
     const bell = document.getElementById('notifBellOfficer');
     const panel = document.getElementById('notifPanelOfficer');
     const closeBtn = document.getElementById('notifCloseOfficer');
+    const badge = bell?.querySelector('span');
+    const csrf = '{{ csrf_token() }}';
 
-    function togglePanel() { panel?.classList.toggle('hidden'); }
+    function togglePanel() {
+        if (!panel) return;
+        panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden')) {
+            fetch('{{ route('officer.notifications.seen') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(() => { if (badge) badge.style.display = 'none'; }).catch(()=>{});
+        }
+    }
     function hidePanelOnOutside(e) {
         if (!panel || panel.classList.contains('hidden')) return;
         if (!panel.contains(e.target) && !bell.contains(e.target)) {

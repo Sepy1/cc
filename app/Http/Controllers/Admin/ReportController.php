@@ -289,28 +289,41 @@ public function exportPdf(Request $request)
     $totalSelesai    = $tickets->whereIn('status', $selesaiStatuses)->count();
     $totalDalamProses= $tickets->whereIn('status', $prosesStatuses)->count();
 
-    // Rata-rata waktu penyelesaian (jam) untuk tiket yang selesai
-    // Gunakan closing_at -> resolved_at -> updated_at sebagai fallback akhir
+    // Rata-rata waktu penyelesaian (jam) untuk tiket yang selesai + daftar durasi per tiket
     $totalHours = 0;
     $resolvedCount = 0;
+    $durations = []; // { added }
     foreach ($tickets as $t) {
         if (in_array($t->status, $selesaiStatuses)) {
             $start = $t->created_at;
             $end   = $t->closing_at ?? $t->resolved_at ?? $t->updated_at ?? $t->created_at;
             if ($start && $end && $end->greaterThanOrEqualTo($start)) {
-                $totalHours += $end->diffInHours($start);
+                $hours = $end->diffInHours($start);
+                $durations[] = [
+                    'ticket_no' => $t->ticket_no,
+                    'title'     => $t->title,
+                    'from'      => $start->format('Y-m-d H:i'),
+                    'to'        => $end->format('Y-m-d H:i'),
+                    'hours'     => $hours,
+                ];
+                $totalHours += $hours;
                 $resolvedCount++;
             }
         }
     }
     $avgHours = $resolvedCount > 0 ? round($totalHours / $resolvedCount, 1) : 0;
 
+    // Deskripsi ringkas untuk PDF (lamanya waktu penyelesaian) { added }
+    $lamaPenyelesaianDesc = $resolvedCount > 0
+        ? "Rata-rata waktu penyelesaian tiket adalah {$avgHours} jam dari status Open ke Closed/Resolved ({$resolvedCount} tiket selesai pada periode ini)."
+        : "Belum ada tiket yang berstatus Closed/Resolved pada periode ini, sehingga rata-rata waktu penyelesaian belum tersedia.";
+
     // Label periode
     $bulanNama = $month === 'all' ? 'Semua' : \Carbon\Carbon::create()->month((int)$month)->translatedFormat('F');
     $tahunNama = $year === 'all' ? 'Semua' : $year;
 
-    // Render PDF
-    $pdf = Pdf::loadView('admin.reports.monthly_pdf', [
+    // Render PDF (teruskan durations dan deskripsi) { changed code }
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.reports.monthly_pdf', [
         'tickets'          => $tickets,
         'totalDiterima'    => $totalDiterima,
         'totalSelesai'     => $totalSelesai,
@@ -318,6 +331,8 @@ public function exportPdf(Request $request)
         'avgHours'         => $avgHours,
         'bulanNama'        => $bulanNama,
         'tahunNama'        => $tahunNama,
+        'durations'        => $durations,              // { added }
+        'lamaDesc'         => $lamaPenyelesaianDesc,   // { added }
     ])->setPaper('A4', 'portrait');
 
     $file = sprintf('laporan_bulanan_call_center_%s_%s.pdf',

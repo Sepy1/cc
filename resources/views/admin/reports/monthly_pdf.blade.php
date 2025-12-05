@@ -58,7 +58,14 @@
                 <td>{{ optional($t->assignedTo)->name ?? '-' }}</td>
                 <td class="center">{{ in_array($t->status, $selesaiStatuses) ? 'Selesai' : 'Proses' }}</td>
                 <td class="small">
-                    {{ \Illuminate\Support\Str::limit(trim($t->detail ?? $t->title ?? '-'), 120) }}
+                    @php
+                        $dur = '-';
+                        if (in_array($t->status, $selesaiStatuses) && $t->created_at && $t->closing_at && $t->closing_at->gte($t->created_at)) {
+                            $hours = $t->closing_at->diffInHours($t->created_at);
+                            $dur = $hours . ' jam (≈ ' . number_format($hours/24, 1) . ' hari)';
+                        }
+                    @endphp
+                    {{ $dur }}
                 </td>
             </tr>
         @empty

@@ -19,39 +19,115 @@ class TicketController extends Controller
     {
         $data = $request->validated();
 
-        // Generate ticket number: TCK-YYYYMMDD-<6 random alnum>
+        // Paksa default reporter_type dari form statis: nasabah
+        $data['reporter_type'] = $data['reporter_type'] ?? 'nasabah';
+        // Set status default
+        $data['status'] = $data['status'] ?? 'open';
+
+        // is_nasabah diset otomatis jika reporter_type nasabah
+        $data['is_nasabah'] = ($data['reporter_type'] === 'nasabah');
+
+        // media_closing konsisten lowercase (whatsapp/telepon/email/offline)
+        if (isset($data['media_closing']) && is_string($data['media_closing'])) {
+            $mc = strtolower(trim($data['media_closing']));
+            $data['media_closing'] = $mc === 'telephone' ? 'telepon' : $mc; // konsisten label
+        }
+
+        // Merge field tambahan yang mungkin tidak ada di StoreTicketRequest
+        $extra = [
+            'tempat_lahir'   => $request->input('tempat_lahir'),
+            'tgl_lahir'      => $request->input('tgl_lahir'),
+            'id_ktp'         => $request->input('id_ktp') ?? $request->input('ktp_id'), // alias
+            'alamat'         => $request->input('alamat'),
+            'nomor_rekening' => $request->input('nomor_rekening'),
+            'nama_ibu'       => $request->input('nama_ibu'),
+            'kode_kantor'    => $request->input('kode_kantor'),
+            'is_nasabah'     => $request->boolean('is_nasabah', $data['is_nasabah'] ?? null),
+        ];
+        foreach ($extra as $k => $v) {
+            if (!is_null($v) && $v !== '') $data[$k] = $v;
+        }
+
+        // Normalisasi tempat_lahir
+        if (isset($data['tempat_lahir'])) {
+            $data['tempat_lahir'] = trim((string)$data['tempat_lahir']) ?: null;
+        }
+
+        // tgl_lahir (nullable → YYYY-MM-DD)
+        if (!empty($data['tgl_lahir'])) {
+            try {
+                $dt = \Carbon\Carbon::parse($data['tgl_lahir']);
+                $data['tgl_lahir'] = $dt->toDateString();
+            } catch (\Throwable $e) {
+                $data['tgl_lahir'] = null;
+            }
+        }
+
+        // Handle file multipart (attachment_ktp, attachment_bukti)
+        // Aliases dari form statis: upload_ktp -> attachment_ktp, attachment -> attachment_bukti
+        if ($request->hasFile('upload_ktp')) {
+            $data['attachment_ktp'] = $request->file('upload_ktp')->store('tickets/ktp', 'public');
+        }
+        if ($request->hasFile('attachment')) {
+            $data['attachment_bukti'] = $request->file('attachment')->store('tickets/bukti', 'public');
+        }
+
+        // Tetap dukung nama field "attachment_ktp" dan "attachment_bukti" jika dikirim sesuai
+        if ($request->hasFile('attachment_ktp')) {
+            $data['attachment_ktp'] = $request->file('attachment_ktp')->store('tickets/ktp', 'public');
+        }
+        if ($request->hasFile('attachment_bukti')) {
+            $data['attachment_bukti'] = $request->file('attachment_bukti')->store('tickets/bukti', 'public');
+        }
+
+        // is_nasabah: utamakan reporter_type; jika tidak ada, ambil boolean dari request
+        if (isset($data['reporter_type'])) {
+            $data['is_nasabah'] = ($data['reporter_type'] === 'nasabah');
+        } elseif ($request->has('is_nasabah')) {
+            $data['is_nasabah'] = $request->boolean('is_nasabah');
+        }
+
+        // Generate nomor tiket
         $ticketNo = $this->generateTicketNo();
 
+        // Filter payload ke kolom yang diizinkan (fillable)
+        $fillable = (new \App\Models\Ticket())->getFillable();
+        $payload  = array_intersect_key(array_merge($data, ['ticket_no' => $ticketNo]), array_flip($fillable));
+
         // Simpan dalam transaksi untuk keamanan dan sekaligus buat event history
-        $ticket = DB::transaction(function () use ($data, $ticketNo) {
-            $t = Ticket::create(array_merge($data, [
-                'ticket_no' => $ticketNo,
-                'status' => $data['status'] ?? 'open',
-            ]));
+        try {
+            $ticket = DB::transaction(function () use ($payload) {
+                $t = Ticket::create($payload);
 
-            // record event 'created' jika model TicketEvent ada
-            if (class_exists(TicketEvent::class)) {
-                TicketEvent::create([
-                    'ticket_id' => $t->id,
-                    'type'      => 'created',
-                    'meta'      => json_encode([
-                        'ticket_no' => $t->ticket_no,
-                        'title'     => $t->title,
-                        'reporter'  => $t->reporter_name ?? ($data['reporter_name'] ?? null),
-                    ]),
-                    // jika request diautentikasi, catat user_id; kalau tidak, biarkan null
-                    'user_id'   => auth()->id() ?? null,
-                ]);
-            }
+                // record event 'created' jika model TicketEvent ada
+                if (class_exists(TicketEvent::class)) {
+                    TicketEvent::create([
+                        'ticket_id' => $t->id,
+                        'type'      => 'created',
+                        'meta'      => json_encode([
+                            'ticket_no' => $t->ticket_no,
+                            'title'     => $t->title,
+                            'reporter'  => $t->reporter_name ?? null,
+                        ]),
+                        'user_id'   => auth()->id() ?? null,
+                    ]);
+                }
 
-            return $t;
-        });
+                return $t;
+            });
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Ticket created',
-            'data' => $ticket,
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Ticket created',
+                'data' => $ticket,
+            ], 201);
+        } catch (\Throwable $e) {
+            // Gagal koneksi DB atau query lainnya: beri respons error terstruktur
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -61,13 +137,17 @@ class TicketController extends Controller
     protected function generateTicketNo(): string
     {
         $date = now()->format('Ymd');
-        // loop hingga unique (jarang perlu lebih dari sekali)
-        do {
-            $rand = strtoupper(Str::random(6)); // alphanumeric 6 chars
-            $ticketNo = "TCK-{$date}-{$rand}";
-        } while (Ticket::where('ticket_no', $ticketNo)->exists());
-
-        return $ticketNo;
+        // coba cek unik; jika koneksi DB gagal, fallback acak
+        try {
+            do {
+                $rand = strtoupper(Str::random(6)); // alphanumeric 6 chars
+                $ticketNo = "TCK-{$date}-{$rand}";
+            } while (Ticket::where('ticket_no', $ticketNo)->exists());
+            return $ticketNo;
+        } catch (\Throwable $e) {
+            // fallback tanpa cek DB
+            return "TCK-{$date}-" . strtoupper(Str::random(6));
+        }
     }
 
     /**

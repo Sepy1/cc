@@ -15,13 +15,23 @@
     ];
 
     // Notifikasi (24 jam terakhir)
-    $notifQuery = \App\Models\TicketEvent::with(['user','ticket'])
-        ->whereIn('type', ['status_changed','replied'])
-        ->where('created_at', '>=', now()->subDay())
+    $seenAt = session('notif_seen_at_admin');
+    $base = \App\Models\TicketEvent::with(['user','ticket'])
+        ->whereIn('type', ['status_changed','replied','assigned']) // { added 'assigned' }
         ->orderBy('created_at', 'desc');
 
-    $notifCount = (clone $notifQuery)->count();
-    $notifications = (clone $notifQuery)->take(20)->get();
+    $unreadQuery = $seenAt
+        ? (clone $base)->where('created_at', '>', $seenAt)
+        : (clone $base)->where('created_at', '>=', now()->subDay());
+    $readQuery = $seenAt
+        ? (clone $base)->where('created_at', '<=', $seenAt)->where('created_at', '>=', now()->subDay())
+        : collect(); // jika belum pernah lihat, anggap tidak ada read dalam 24 jam
+
+    $notifCount = (clone $unreadQuery)->count();
+    $unread = (clone $unreadQuery)->take(20)->get();
+    $read   = $readQuery instanceof \Illuminate\Support\Collection
+        ? collect()
+        : (clone $readQuery)->take(20)->get();
 @endphp
 
 {{-- Topbar bell --}}
@@ -46,27 +56,56 @@
             </button>
         </div>
         <div class="max-h-80 overflow-y-auto">
-            @forelse($notifications as $ev)
+            {{-- Unread --}}
+            @foreach($unread as $ev)
                 @php
                     $isStatus = $ev->type === 'status_changed';
+                    $isAssigned = $ev->type === 'assigned'; // { added }
                     $actor = $ev->user?->name ?? 'Sistem';
                     $ticketNo = $ev->ticket?->ticket_no ?? ('#'.$ev->ticket_id);
                     $meta = is_array($ev->meta) ? $ev->meta : (is_string($ev->meta) ? (json_decode($ev->meta, true) ?: []) : []);
                     $label = $isStatus
                         ? ('Status → ' . ($meta['to'] ?? ($meta['status'] ?? '')))
-                        : 'Komentar baru';
+                        : ($isAssigned ? ('Tiket di-assign ke ' . ($meta['assigned_to_name'] ?? ('User #' . ($meta['assigned_to'] ?? '-')))) : 'Komentar baru');
                 @endphp
-                <a href="{{ route('admin.tickets.show', $ev->ticket_id) }}" class="block px-4 py-3 hover:bg-gray-50">
-                    <div class="text-xs text-gray-400">{{ $ev->created_at?->diffForHumans() }}</div>
-                    <div class="text-sm text-gray-800">{{ $label }} pada tiket {{ $ticketNo }}</div>
-                    <div class="text-xs text-gray-500">oleh {{ $actor }}</div>
+                <a href="{{ route('admin.tickets.show', $ev->ticket_id) }}" class="block px-4 py-3 bg-indigo-50 hover:bg-indigo-100">
+                    <div class="text-xs text-gray-500">{{ $ev->created_at?->diffForHumans() }}</div>
+                    <div class="text-sm font-medium text-gray-900">{{ $label }} pada tiket {{ $ticketNo }}</div>
+                    <div class="text-xs text-gray-600">oleh {{ $actor }}</div>
                     @if(!$isStatus && !empty($meta['snippet']))
-                        <div class="mt-1 text-xs text-gray-600 line-clamp-2">{{ $meta['snippet'] }}</div>
+                        <div class="mt-1 text-xs text-gray-700 line-clamp-2">{{ $meta['snippet'] }}</div>
                     @endif
                 </a>
-            @empty
-                <div class="px-4 py-6 text-center text-sm text-gray-500">Tidak ada notifikasi baru.</div>
-            @endforelse
+            @endforeach
+
+            {{-- Read (jika ada) --}}
+            @if(($read instanceof \Illuminate\Support\Collection ? $read->count() : $read->count()) > 0)
+                <div class="px-4 py-2 text-xs text-gray-400 border-t">Sebelumnya</div>
+                @foreach($read as $ev)
+                    @php
+                        $isStatus = $ev->type === 'status_changed';
+                        $isAssigned = $ev->type === 'assigned'; // { added }
+                        $actor = $ev->user?->name ?? 'Sistem';
+                        $ticketNo = $ev->ticket?->ticket_no ?? ('#'.$ev->ticket_id);
+                        $meta = is_array($ev->meta) ? $ev->meta : (is_string($ev->meta) ? (json_decode($ev->meta, true) ?: []) : []);
+                        $label = $isStatus
+                            ? ('Status → ' . ($meta['to'] ?? ($meta['status'] ?? '')))
+                            : ($isAssigned ? ('Tiket di-assign ke ' . ($meta['assigned_to_name'] ?? ('User #' . ($meta['assigned_to'] ?? '-')))) : 'Komentar baru');
+                    @endphp
+                    <a href="{{ route('admin.tickets.show', $ev->ticket_id) }}" class="block px-4 py-3 hover:bg-gray-50">
+                        <div class="text-xs text-gray-400">{{ $ev->created_at?->diffForHumans() }}</div>
+                        <div class="text-sm text-gray-800">{{ $label }} pada tiket {{ $ticketNo }}</div>
+                        <div class="text-xs text-gray-500">oleh {{ $actor }}</div>
+                        @if(!$isStatus && !empty($meta['snippet']))
+                            <div class="mt-1 text-xs text-gray-600 line-clamp-2">{{ $meta['snippet'] }}</div>
+                        @endif
+                    </a>
+                @endforeach
+            @else
+                @if($unread->isEmpty())
+                    <div class="px-4 py-6 text-center text-sm text-gray-500">Tidak ada notifikasi baru.</div>
+                @endif
+            @endif
         </div>
     </div>
 </div>
@@ -259,10 +298,19 @@
     const bell = document.getElementById('notifBellAdmin');
     const panel = document.getElementById('notifPanelAdmin');
     const closeBtn = document.getElementById('notifCloseAdmin');
+    const badge = bell?.querySelector('span');
+    const csrf = '{{ csrf_token() }}';
 
     function togglePanel() {
         if (!panel) return;
         panel.classList.toggle('hidden');
+        // saat dibuka, tandai seen server-side dan sembunyikan badge
+        if (!panel.classList.contains('hidden')) {
+            fetch('{{ route('admin.notifications.seen') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(() => { if (badge) badge.style.display = 'none'; }).catch(()=>{});
+        }
     }
     function hidePanelOnOutside(e) {
         if (!panel || panel.classList.contains('hidden')) return;

@@ -20,6 +20,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::post('/tickets', [TicketController::class, 'store']);
-Route::get('/tickets/{ticket_no}', [\App\Http\Controllers\API\TicketController::class, 'showByTicketNo']);
+Route::get('/tickets/{ticket_no}', [TicketController::class, 'showByTicketNo']);
+
+// Optional: simple OPTIONS for preflight (same-origin form usually won't need this)
+Route::options('/tickets', function () {
+    return response()->noContent(200);
+});
 
 

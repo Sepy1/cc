@@ -34,6 +34,9 @@ class Ticket extends Model
         'attachment_bukti',
         'media_closing',
         'closing_at',
+        // menerima input API
+        'tempat_lahir',
+        'tgl_lahir',
     ];
 
     // jika ingin casting di masa depan
@@ -44,6 +47,8 @@ class Ticket extends Model
         'assigned_at' => 'datetime',
         'is_nasabah' => 'boolean',
         'closing_at' => 'datetime',
+        // cast ke date agar otomatis Carbon
+        'tgl_lahir' => 'date',
     ];
 
     public function replies(): HasMany

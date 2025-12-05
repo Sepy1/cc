@@ -104,6 +104,12 @@ Route::middleware(['auth', 'role:admin'])
         // Export: PDF laporan bulanan
         Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])
             ->name('reports.export_pdf');
+
+        // Notifikasi: tandai sebagai dibuka (server-side via session)
+        Route::post('/notifications/seen', function () {
+            session(['notif_seen_at_admin' => now()]);
+            return response()->noContent();
+        })->name('notifications.seen');
     });
 
 /*
@@ -122,6 +128,12 @@ Route::middleware(['auth', 'role:officer'])
         Route::resource('tickets', \App\Http\Controllers\Officer\TicketController::class);
         Route::post('tickets/{ticket}/reply', [\App\Http\Controllers\Officer\TicketController::class, 'reply'])->name('tickets.reply');
         Route::post('tickets/{ticket}/update-status', [\App\Http\Controllers\Officer\TicketController::class, 'updateStatus'])->name('tickets.update_status');
+
+        // Notifikasi: tandai sebagai dibuka (server-side via session)
+        Route::post('/notifications/seen', function () {
+            session(['notif_seen_at_officer' => now()]);
+            return response()->noContent();
+        })->name('notifications.seen');
     });
 
 /*
