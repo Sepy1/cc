@@ -10,17 +10,84 @@
         'rejected' => 'bg-red-100 text-red-800',
     ];
 
-/*
- Prepare phone for WhatsApp:
-  - remove non-digits
-  - change leading 0 => 62
-*/
-$rawPhone = $ticket->phone ?? '';
-$onlyDigits = preg_replace('/\D/', '', $rawPhone);
-$waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
+    // Reporter type (special: nasabah)
+    $reporterTypeColors = [
+        'nasabah' => 'bg-emerald-100 text-emerald-800',
+        'umum'    => 'bg-gray-100 text-gray-700',
+    ];
+    $reporterType = strtolower($ticket->reporter_type ?? (($ticket->is_nasabah ?? false) ? 'nasabah' : 'umum'));
+    $repBadgeClass = $reporterTypeColors[$reporterType ?: 'umum'] ?? $reporterTypeColors['umum'];
+
+    /*
+     Prepare phone for WhatsApp:
+      - remove non-digits
+      - change leading 0 => 62
+    */
+    $rawPhone = $ticket->phone ?? '';
+    $onlyDigits = preg_replace('/\D/', '', $rawPhone);
+    $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
+
+    // Notifikasi khusus officer: berdasarkan tiket yang di-assign kepada officer
+    $me = auth()->id();
+    $myTicketIds = \App\Models\Ticket::where('assigned_to', $me)->pluck('id');
+    $notifQuery = \App\Models\TicketEvent::with(['user','ticket'])
+        ->whereIn('type', ['status_changed','replied'])
+        ->where('created_at', '>=', now()->subDay())
+        ->whereIn('ticket_id', $myTicketIds)
+        ->orderBy('created_at','desc');
+    $notifCount = (clone $notifQuery)->count();
+    $notifications = (clone $notifQuery)->take(20)->get();
 @endphp
 
+{{-- Topbar bell --}}
+<div class="fixed top-4 right-4 z-40">
+    <button id="notifBellOfficerShow" type="button" class="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border shadow hover:bg-gray-50" title="Notifikasi">
+        <svg class="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 005 15h14a1 1 0 00.707-1.707L18 11.586V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/></svg>
+        @if($notifCount > 0)<span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white">{{ $notifCount }}</span>@endif
+    </button>
+    <div id="notifPanelOfficerShow" class="hidden mt-2 w-80 bg-white border rounded-xl shadow-xl overflow-hidden">
+        <div class="px-4 py-3 border-b flex items-center justify-between">
+            <div class="text-sm font-semibold text-gray-800">Notifikasi</div>
+            <button type="button" id="notifCloseOfficerShow" class="text-gray-400 hover:text-gray-600" aria-label="Close">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="max-h-80 overflow-y-auto">
+            @forelse($notifications as $ev)
+                @php
+                    $isStatus = $ev->type === 'status_changed';
+                    $actor = $ev->user?->name ?? 'Sistem';
+                    $ticketNo = $ev->ticket?->ticket_no ?? ('#'.$ev->ticket_id);
+                    $meta = is_array($ev->meta) ? $ev->meta : (is_string($ev->meta) ? (json_decode($ev->meta, true) ?: []) : []);
+                    $label = $isStatus ? ('Status → ' . ($meta['to'] ?? ($meta['status'] ?? ''))) : 'Komentar baru';
+                @endphp
+                <a href="{{ route('officer.tickets.show', $ev->ticket_id) }}" class="block px-4 py-3 hover:bg-gray-50">
+                    <div class="text-xs text-gray-400">{{ $ev->created_at?->diffForHumans() }}</div>
+                    <div class="text-sm text-gray-800">{{ $label }} pada tiket {{ $ticketNo }}</div>
+                    <div class="text-xs text-gray-500">oleh {{ $actor }}</div>
+                    @if(!$isStatus && !empty($meta['snippet'])) <div class="mt-1 text-xs text-gray-600 line-clamp-2">{{ $meta['snippet'] }}</div> @endif
+                </a>
+            @empty
+                <div class="px-4 py-6 text-center text-sm text-gray-500">Tidak ada notifikasi baru.</div>
+            @endforelse
+        </div>
+    </div>
+</div>
+
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    @if(session('notif'))
+        @php $n = session('notif'); @endphp
+        <div class="mb-4">
+            <div class="inline-flex items-center px-3 py-2 rounded-md text-sm
+                {{ ($n['type'] ?? '') === 'status' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700' }}">
+                <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 005 15h14a1 1 0 00.707-1.707L18 11.586V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/>
+                </svg>
+                {{ $n['message'] ?? 'Perubahan tersimpan.' }}
+            </div>
+        </div>
+    @endif
+
     {{-- Breadcrumb --}}
     <nav class="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
         <ol class="flex items-center gap-2">
@@ -43,8 +110,20 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
                         </h1>
                         <p class="mt-1 text-sm text-gray-500">
                             Dilaporkan oleh <span class="font-medium text-gray-700">{{ $ticket->reporter_name }}</span>
+                            @if($reporterType === 'nasabah')
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ $repBadgeClass }}">
+                                    Nasabah
+                                </span>
+                            @endif
                             @if($ticket->email)
                                 • <a href="mailto:{{ $ticket->email }}" class="text-indigo-600 hover:underline text-sm">{{ $ticket->email }}</a>
+                            @endif
+                            @if($waNumber)
+                                • <a
+                                    href="https://wa.me/{{ $waNumber }}?text={{ urlencode('Halo, kami dari Support menanggapi tiket #' . ($ticket->ticket_no ?? '')) }}"
+                                    target="_blank"
+                                    class="text-green-600 hover:underline text-sm"
+                                >WhatsApp</a>
                             @endif
                         </p>
                     </div>
@@ -57,8 +136,6 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold {{ $badgeClass }}">
                             {{ ucfirst($ticket->status ?? 'Unknown') }}
                         </span>
-
-                       
 
                         <a href="#" class="open-history inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
                            title="Lihat riwayat tiket">
@@ -88,7 +165,114 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
                         <div class="text-xs text-gray-500">Terakhir diupdate</div>
                         <div class="mt-1 text-sm text-gray-800">{{ $ticket->updated_at?->diffForHumans() ?? '-' }}</div>
                     </div>
+
+                    <div class="p-3 bg-white border border-gray-100 rounded-lg">
+                        <div class="text-xs text-gray-500">Tipe Pelapor</div>
+                        <div class="mt-1 text-sm text-gray-800">
+                            {{ $reporterType === 'nasabah' ? 'Nasabah' : 'Umum' }}
+                        </div>
+                    </div>
                 </div>
+
+                {{-- Informasi Nasabah (opsional) --}}
+                @php
+                    $hasNasabahInfo = filled($ticket->id_ktp)
+                        || filled($ticket->nomor_rekening)
+                        || filled($ticket->nama_ibu)
+                        || filled($ticket->alamat)
+                        || filled($ticket->kode_kantor)
+                        || filled($ticket->media_closing);
+                @endphp
+                @if($hasNasabahInfo)
+                    <div class="bg-white border border-gray-100 rounded-lg">
+                        <div class="px-4 py-3 border-b">
+                            <h3 class="text-sm font-medium text-gray-700">Informasi Nasabah</h3>
+                        </div>
+                        <div class="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            @if(filled($ticket->id_ktp))
+                                <div>
+                                    <div class="text-xs text-gray-500">ID KTP</div>
+                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->id_ktp }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->nomor_rekening))
+                                <div>
+                                    <div class="text-xs text-gray-500">Nomor Rekening</div>
+                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->nomor_rekening }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->nama_ibu))
+                                <div>
+                                    <div class="text-xs text-gray-500">Nama Ibu</div>
+                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->nama_ibu }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->alamat))
+                                <div class="sm:col-span-2">
+                                    <div class="text-xs text-gray-500">Alamat</div>
+                                    <div class="mt-1 text-sm text-gray-800 whitespace-pre-line">{{ $ticket->alamat }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->kode_kantor))
+                                <div>
+                                    <div class="text-xs text-gray-500">Kode Kantor</div>
+                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->kode_kantor }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->media_closing))
+                                <div>
+                                    <div class="text-xs text-gray-500">Media Closing</div>
+                                    <div class="mt-1 text-sm text-gray-800">
+                                        {{-- normalisasi label --}}
+                                        @php
+                                            $mc = strtolower(trim($ticket->media_closing));
+                                            $labels = ['whatsapp' => 'WhatsApp', 'telepon' => 'Telepon', 'offline' => 'Offline'];
+                                            $mediaClosingLabel = $labels[$mc] ?? ucfirst($ticket->media_closing);
+                                        @endphp
+                                        {{ $mediaClosingLabel }}
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Lampiran Tambahan (opsional) --}}
+                @php
+                    $ktpPath = $ticket->attachment_ktp ?? null;
+                    $buktiPath = $ticket->attachment_bukti ?? null;
+                @endphp
+                @if($ktpPath || $buktiPath)
+                    <div class="bg-white border border-gray-100 rounded-lg">
+                        <div class="px-4 py-3 border-b">
+                            <h3 class="text-sm font-medium text-gray-700">Lampiran</h3>
+                        </div>
+                        <div class="px-4 py-4 space-y-3">
+                            @if($ktpPath)
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                    </svg>
+                                    <span class="text-sm text-gray-700">KTP</span>
+                                    <a class="text-sm text-indigo-600 hover:underline" target="_blank" href="{{ asset('storage/' . $ktpPath) }}">
+                                        {{ basename($ktpPath) }}
+                                    </a>
+                                </div>
+                            @endif
+                            @if($buktiPath)
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                    </svg>
+                                    <span class="text-sm text-gray-700">Bukti</span>
+                                    <a class="text-sm text-indigo-600 hover:underline" target="_blank" href="{{ asset('storage/' . $buktiPath) }}">
+                                        {{ basename($buktiPath) }}
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
 
                 {{-- Komentar: card + scrollable --}}
                 <div class="bg-white border border-gray-100 rounded-lg">
@@ -215,6 +399,9 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
         </div>
     </div>
 </div>
+
+{{-- Anda bisa mengubah informasi ini di halaman Edit --}}
+{{-- <a href="{{ route('officer.tickets.edit', $ticket) }}" class="text-indigo-600 text-sm underline">Edit tiket</a> --}}
 @endsection
 
 {{-- HISTORY MODAL (timeline) --}}
@@ -393,6 +580,18 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
     historyOverlay?.addEventListener('click', closeHistoryModal);
     historyCloseBtn?.addEventListener('click', closeHistoryModal);
     historyCloseFooterBtn?.addEventListener('click', closeHistoryModal);
+
+    const bell = document.getElementById('notifBellOfficerShow');
+    const panel = document.getElementById('notifPanelOfficerShow');
+    const closeBtn = document.getElementById('notifCloseOfficerShow');
+    function togglePanel() { panel?.classList.toggle('hidden'); }
+    function hidePanelOnOutside(e) {
+        if (!panel || panel.classList.contains('hidden')) return;
+        if (!panel.contains(e.target) && !bell.contains(e.target)) panel.classList.add('hidden');
+    }
+    bell?.addEventListener('click', togglePanel);
+    closeBtn?.addEventListener('click', () => panel.classList.add('hidden'));
+    document.addEventListener('click', hidePanelOnOutside);
 })();
 </script>
 @endpush

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Exports\TicketsExport;
 use Maatwebsite\Excel\Facades\Excel;
-
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
@@ -257,6 +257,75 @@ public function exportCsv(Request $request)
     };
 
     return response()->stream($callback, 200, $headers);
+}
+
+public function exportPdf(Request $request)
+{
+    // hanya admin
+    if ((Auth::user()->role ?? '') !== 'admin') {
+        abort(403);
+    }
+
+    // filter (default sama seperti index)
+    $month = $request->input('month', 'all');
+    $year  = $request->input('year', 'all');
+
+    // build query sesuai filter
+    $query = Ticket::query();
+    if ($year !== 'all') {
+        $query->whereYear('created_at', (int) $year);
+    }
+    if ($month !== 'all') {
+        $query->whereMonth('created_at', (int) $month);
+    }
+
+    $tickets = $query->orderBy('created_at', 'asc')->get();
+
+    // Rekap
+    $totalDiterima = $tickets->count();
+    $selesaiStatuses = ['resolved', 'closed'];
+    $prosesStatuses  = ['open', 'pending'];
+
+    $totalSelesai    = $tickets->whereIn('status', $selesaiStatuses)->count();
+    $totalDalamProses= $tickets->whereIn('status', $prosesStatuses)->count();
+
+    // Rata-rata waktu penyelesaian (jam) untuk tiket yang selesai
+    // Gunakan closing_at -> resolved_at -> updated_at sebagai fallback akhir
+    $totalHours = 0;
+    $resolvedCount = 0;
+    foreach ($tickets as $t) {
+        if (in_array($t->status, $selesaiStatuses)) {
+            $start = $t->created_at;
+            $end   = $t->closing_at ?? $t->resolved_at ?? $t->updated_at ?? $t->created_at;
+            if ($start && $end && $end->greaterThanOrEqualTo($start)) {
+                $totalHours += $end->diffInHours($start);
+                $resolvedCount++;
+            }
+        }
+    }
+    $avgHours = $resolvedCount > 0 ? round($totalHours / $resolvedCount, 1) : 0;
+
+    // Label periode
+    $bulanNama = $month === 'all' ? 'Semua' : \Carbon\Carbon::create()->month((int)$month)->translatedFormat('F');
+    $tahunNama = $year === 'all' ? 'Semua' : $year;
+
+    // Render PDF
+    $pdf = Pdf::loadView('admin.reports.monthly_pdf', [
+        'tickets'          => $tickets,
+        'totalDiterima'    => $totalDiterima,
+        'totalSelesai'     => $totalSelesai,
+        'totalDalamProses' => $totalDalamProses,
+        'avgHours'         => $avgHours,
+        'bulanNama'        => $bulanNama,
+        'tahunNama'        => $tahunNama,
+    ])->setPaper('A4', 'portrait');
+
+    $file = sprintf('laporan_bulanan_call_center_%s_%s.pdf',
+        $tahunNama === 'Semua' ? 'allyears' : $tahunNama,
+        $bulanNama === 'Semua' ? 'allmonths' : \Str::slug($bulanNama)
+    );
+
+    return $pdf->download($file);
 }
 
 }

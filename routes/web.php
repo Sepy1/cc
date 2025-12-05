@@ -100,6 +100,10 @@ Route::middleware(['auth', 'role:admin'])
         // Export: CSV fallback (no external package required)
         Route::get('/reports/export-csv', [ReportController::class, 'exportCsv'])
             ->name('reports.export_csv');
+
+        // Export: PDF laporan bulanan
+        Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])
+            ->name('reports.export_pdf');
     });
 
 /*
@@ -115,24 +119,9 @@ Route::middleware(['auth', 'role:officer'])
     ->prefix('officer')
     ->name('officer.')
     ->group(function () {
-
-        // Tickets assigned to this officer
-        Route::get('/tickets', [OfficerTicketController::class, 'indexAssigned'])
-            ->name('tickets.index');
-
-        // Show ticket detail for officer (id numeric)
-        Route::get('tickets/{ticket}', [\App\Http\Controllers\Officer\TicketController::class, 'show'])
-            ->name('tickets.show');
-
-        // Officer reply
-        Route::post('/tickets/{ticket}/reply', [OfficerTicketController::class, 'reply'])
-            ->whereNumber('ticket')
-            ->name('tickets.reply');
-
-        // Officer update status
-        Route::post('/tickets/{ticket}/status', [OfficerTicketController::class, 'updateStatus'])
-            ->whereNumber('ticket')
-            ->name('tickets.update_status');
+        Route::resource('tickets', \App\Http\Controllers\Officer\TicketController::class);
+        Route::post('tickets/{ticket}/reply', [\App\Http\Controllers\Officer\TicketController::class, 'reply'])->name('tickets.reply');
+        Route::post('tickets/{ticket}/update-status', [\App\Http\Controllers\Officer\TicketController::class, 'updateStatus'])->name('tickets.update_status');
     });
 
 /*

@@ -143,6 +143,14 @@ class TicketAdminController extends Controller
             }
             $ticket->save();
 
+            // set closing_at berdasarkan status terkini
+            if (in_array($ticket->status, ['resolved','closed'])) {
+                $ticket->closing_at = now();
+            } else {
+                $ticket->closing_at = null;
+            }
+            $ticket->save();
+
             // catat event jika status berubah
             if (isset($data['status']) && $originalStatus !== $ticket->status) {
                 // bila status berubah, gunakan helper model untuk mencatat event (ikutkan tindak_lanjut)
@@ -155,6 +163,14 @@ class TicketAdminController extends Controller
             DB::rollBack();
             Log::error('Admin ticket update failed', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Gagal menyimpan tiket: ' . $e->getMessage());
+        }
+
+        // flash notif status change (admin)
+        if (isset($data['status']) && $originalStatus !== $ticket->status) {
+            session()->flash('notif', [
+                'type' => 'status',
+                'message' => 'Status tiket diubah dari ' . ucfirst($originalStatus) . ' ke ' . ucfirst($ticket->status),
+            ]);
         }
 
         return redirect()->route('admin.tickets.show', $ticket->id)->with('success', 'Tiket diperbarui.');
@@ -210,6 +226,12 @@ class TicketAdminController extends Controller
 
         // update updated_at tiket
         $ticket->touch();
+
+        // flash notif reply (admin)
+        session()->flash('notif', [
+            'type' => 'reply',
+            'message' => 'Komentar baru dikirim ke tiket #' . $ticket->ticket_no,
+        ]);
 
         return redirect()
             ->route('admin.tickets.show', $ticket->id)
@@ -284,6 +306,8 @@ class TicketAdminController extends Controller
 
         $old = $ticket->status;
         $ticket->status = $data['status'];
+        // set closing_at sesuai status baru
+        $ticket->closing_at = in_array($ticket->status, ['resolved','closed']) ? now() : null;
         $ticket->save();
 
         if (class_exists(TicketEvent::class)) {
@@ -294,6 +318,12 @@ class TicketAdminController extends Controller
                 'user_id'   => auth()->id(),
             ]);
         }
+
+        // flash notif quick status (admin)
+        session()->flash('notif', [
+            'type' => 'status',
+            'message' => 'Status tiket diubah dari ' . ucfirst($old) . ' ke ' . ucfirst($ticket->status),
+        ]);
 
         return redirect()
             ->route('admin.tickets.show', $ticket->id)

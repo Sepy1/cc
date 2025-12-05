@@ -23,6 +23,17 @@ class Ticket extends Model
         'assigned_to',
         'assigned_at',
         'tindak_lanjut',
+        'reporter_type',
+        'is_nasabah',
+        'id_ktp',
+        'nomor_rekening',
+        'nama_ibu',
+        'alamat',
+        'kode_kantor',
+        'attachment_ktp',
+        'attachment_bukti',
+        'media_closing',
+        'closing_at',
     ];
 
     // jika ingin casting di masa depan
@@ -31,6 +42,8 @@ class Ticket extends Model
         'updated_at' => 'datetime',
         'assigned_to' => 'integer',
         'assigned_at' => 'datetime',
+        'is_nasabah' => 'boolean',
+        'closing_at' => 'datetime',
     ];
 
     public function replies(): HasMany

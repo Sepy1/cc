@@ -4,32 +4,32 @@ namespace App\Http\Controllers\Officer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
-use App\Models\TicketReply;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
+// tambahkan import model balasan
+use App\Models\TicketReply;
 
 class TicketController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth');
-        // tambahan: pastikan middleware role:officer ter-apply via routes
+        // role:officer diterapkan via routes
     }
 
-    /**
-     * List tickets assigned to authenticated officer.
-     */
-    public function indexAssigned(Request $request)
+    // INDEX: tiket yang di-assign ke officer saat ini + pencarian
+    public function index(Request $request)
     {
         $q = $request->query('q');
 
         $tickets = Ticket::query()
-            ->where('assigned_to', Auth::id()) // hanya yang diassign ke officer ini
+            ->where('assigned_to', Auth::id())
             ->when($q, fn($query) => $query->where(function($q2) use ($q) {
                 $q2->where('ticket_no', 'like', "%{$q}%")
                    ->orWhere('title', 'like', "%{$q}%")
@@ -42,57 +42,135 @@ class TicketController extends Controller
         return view('officer.tickets.index', compact('tickets'));
     }
 
-    /**
-     * Show ticket to officer (ensure ownership).
-     */
+    public function create()
+    {
+        return view('officer.tickets.create');
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            // field utama
+            'title'            => 'required|string|max:255',
+            'category'         => 'nullable|string|max:100',
+            'detail'           => 'nullable|string',
+            'reporter_name'    => 'required|string|max:150',
+            'email'            => 'nullable|email|max:150',
+            'phone'            => 'nullable|string|max:50',
+            // pelapor & nasabah
+            'reporter_type'    => 'required|in:nasabah,umum',
+            'is_nasabah'       => 'nullable|boolean',
+            'id_ktp'           => 'nullable|string|max:100',
+            'nomor_rekening'   => 'nullable|string|max:100',
+            'nama_ibu'         => 'nullable|string|max:150',
+            'alamat'           => 'nullable|string|max:2000',
+            'kode_kantor'      => 'nullable|string|max:50',
+            'media_closing'    => 'nullable|in:whatsapp,telepon,offline',
+            // lampiran
+            'attachment_ktp'   => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf',
+            'attachment_bukti' => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,zip',
+        ]);
+
+        $data['ticket_no']  = 'TCK-' . strtoupper(Str::random(6));
+        $data['status']     = 'open';
+        $data['is_nasabah'] = ($data['reporter_type'] ?? '') === 'nasabah';
+        $data['assigned_to'] = Auth::id();
+
+        if ($request->hasFile('attachment_ktp')) {
+            $data['attachment_ktp'] = $this->storeAttachment($request->file('attachment_ktp'), 'tickets/ktp');
+        }
+        if ($request->hasFile('attachment_bukti')) {
+            $data['attachment_bukti'] = $this->storeAttachment($request->file('attachment_bukti'), 'tickets/bukti');
+        }
+
+        $ticket = Ticket::create($data);
+
+        return redirect()->route('officer.tickets.show', $ticket)->with('status', 'Tiket berhasil dibuat.');
+    }
+
     public function show(Ticket $ticket)
     {
-        if ($ticket->assigned_to !== Auth::id()) {
+        if ((int)$ticket->assigned_to !== (int)Auth::id()) {
             abort(403, 'Unauthorized');
         }
 
-        $ticket->load(['replies.user', 'assignedTo', 'events.user']); // jika relasi ada
-        return view('officer.tickets.show', [
-            'ticket' => $ticket,
-        ]);
+        $ticket->loadMissing(['replies.user', 'events.user', 'assignedTo']);
+        return view('officer.tickets.show', compact('ticket'));
     }
 
-    /**
-     * Officer replies to ticket.
-     */
-    public function reply(Request $request, Ticket $ticket)
+    public function edit(Ticket $ticket)
     {
-        $data = $request->validate([
-            'message'    => ['nullable', 'string', 'max:10000'],
-            'attachment' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,pdf,doc,docx,xls,xlsx,zip'],
-        ]);
+        if ((int)$ticket->assigned_to !== (int)Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
+        return view('officer.tickets.edit', compact('ticket'));
+    }
 
-        $path = null;
-        if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('attachments', 'public');
+    public function update(Request $request, Ticket $ticket)
+    {
+        if ((int)$ticket->assigned_to !== (int)Auth::id()) {
+            abort(403, 'Unauthorized');
         }
 
-        $reply = new TicketReply();
-        $reply->ticket_id  = $ticket->id;
-        $reply->user_id    = $request->user()->id;
-        $reply->message    = $data['message'] ?? null;
-        $reply->attachment = $path;
-        $reply->save();
+        $data = $request->validate([
+            'title'            => 'sometimes|required|string|max:255',
+            'category'         => 'nullable|string|max:100',
+            'detail'           => 'nullable|string',
+            'reporter_name'    => 'sometimes|required|string|max:150',
+            'email'            => 'nullable|email|max:150',
+            'phone'            => 'nullable|string|max:50',
+            // pelapor & nasabah
+            'reporter_type'    => 'required|in:nasabah,umum',
+            'is_nasabah'       => 'nullable|boolean',
+            'id_ktp'           => 'nullable|string|max:100',
+            'nomor_rekening'   => 'nullable|string|max:100',
+            'nama_ibu'         => 'nullable|string|max:150',
+            'alamat'           => 'nullable|string|max:2000',
+            'kode_kantor'      => 'nullable|string|max:50',
+            'media_closing'    => 'nullable|in:whatsapp,telepon,offline',
+            'attachment_ktp'   => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf',
+            'attachment_bukti' => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,zip',
+        ]);
 
-        return redirect()->route('officer.tickets.show', $ticket)->with('status', 'Balasan terkirim.');
+        $data['is_nasabah'] = ($data['reporter_type'] ?? $ticket->reporter_type) === 'nasabah';
+
+        if ($request->hasFile('attachment_ktp')) {
+            if ($ticket->attachment_ktp) Storage::disk('public')->delete($ticket->attachment_ktp);
+            $data['attachment_ktp'] = $this->storeAttachment($request->file('attachment_ktp'), 'tickets/ktp');
+        }
+        if ($request->hasFile('attachment_bukti')) {
+            if ($ticket->attachment_bukti) Storage::disk('public')->delete($ticket->attachment_bukti);
+            $data['attachment_bukti'] = $this->storeAttachment($request->file('attachment_bukti'), 'tickets/bukti');
+        }
+
+        $ticket->update($data);
+
+        return redirect()->route('officer.tickets.show', $ticket)->with('status', 'Tiket berhasil diperbarui.');
     }
 
-    /**
-     * Officer updates status (allowed statuses can be restricted)
-     */
+    public function destroy(Ticket $ticket)
+    {
+        if ((int)$ticket->assigned_to !== (int)Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // hapus lampiran jika ada
+        if ($ticket->attachment_ktp) Storage::disk('public')->delete($ticket->attachment_ktp);
+        if ($ticket->attachment_bukti) Storage::disk('public')->delete($ticket->attachment_bukti);
+
+        $ticket->delete();
+        return redirect()->route('officer.tickets.index')->with('status', 'Tiket dihapus.');
+    }
+
+    // Update status (Pending/Resolved) oleh officer pemilik tiket
     public function updateStatus(Request $request, Ticket $ticket)
     {
-        if ((int) $ticket->assigned_to !== (int) Auth::id()) {
+        if ((int)$ticket->assigned_to !== (int)Auth::id()) {
             abort(403, 'Unauthorized');
         }
 
         $request->validate([
-            'status' => ['required', Rule::in(['pending','resolved'])],
+            'status' => ['required', Rule::in(['pending', 'resolved'])],
         ]);
 
         Log::info('Officer updateStatus start', [
@@ -104,21 +182,17 @@ class TicketController extends Controller
 
         DB::beginTransaction();
         try {
-            // simpan status langsung (menghindari masalah $fillable)
+            $old = $ticket->status;
             $ticket->status = $request->status;
+            // tentukan closing_at: resolved => now, pending => null
+            $ticket->closing_at = ($request->status === 'resolved') ? now() : null;
             $ticket->save();
 
-            // catat event; jika gagal, akan dilempar ke catch
             if (method_exists($ticket, 'recordEvent')) {
                 $ticket->recordEvent('status_changed', Auth::id(), ['status' => $request->status]);
             }
 
             DB::commit();
-
-            Log::info('Officer updateStatus success', [
-                'ticket_id' => $ticket->id,
-                'new_status' => $ticket->status,
-            ]);
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Officer updateStatus failed', [
@@ -129,7 +203,82 @@ class TicketController extends Controller
             return redirect()->back()->with('error', 'Gagal menyimpan status: ' . $e->getMessage());
         }
 
+        // flash notif status (officer)
+        session()->flash('notif', [
+            'type' => 'status',
+            'message' => 'Status tiket diubah dari ' . ucfirst($old) . ' ke ' . ucfirst($ticket->status),
+        ]);
+
         return redirect()->route('officer.tickets.show', $ticket->id)
                          ->with('success', 'Status tiket diubah menjadi "' . ucfirst($request->status) . '"');
+    }
+
+    // Balasan officer (simpan ke DB)
+    public function reply(Request $request, Ticket $ticket)
+    {
+        if ((int)$ticket->assigned_to !== (int)Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'message'    => 'nullable|string|max:10000',
+            'attachment' => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,doc,docx,xls,xlsx,zip',
+        ]);
+
+        // Minimal salah satu harus ada
+        if (blank($validated['message'] ?? null) && !$request->hasFile('attachment')) {
+            return back()->withErrors(['message' => 'Isi pesan atau unggah lampiran.'])->withInput();
+        }
+
+        $path = null;
+        if ($request->hasFile('attachment')) {
+            $path = $this->storeAttachment($request->file('attachment'), 'tickets/replies');
+        }
+
+        // Simpan reply (gunakan relasi jika tersedia)
+        try {
+            if (method_exists($ticket, 'replies')) {
+                $ticket->replies()->create([
+                    'user_id'    => Auth::id(),
+                    'message'    => $validated['message'] ?? null,
+                    'attachment' => $path,
+                ]);
+            } else {
+                // Fallback langsung pakai model (pastikan table/fillable sudah sesuai)
+                $reply = new TicketReply();
+                $reply->ticket_id  = $ticket->id;
+                $reply->user_id    = Auth::id();
+                $reply->message    = $validated['message'] ?? null;
+                $reply->attachment = $path;
+                $reply->save();
+            }
+        } catch (Exception $e) {
+            // hapus file bila gagal simpan
+            if ($path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            }
+            return back()->withErrors(['message' => 'Gagal menyimpan balasan: ' . $e->getMessage()])->withInput();
+        }
+
+        // Opsional: catat event
+        if (method_exists($ticket, 'recordEvent')) {
+            $ticket->recordEvent('replied', Auth::id(), [
+                'snippet' => \Illuminate\Support\Str::limit((string)($validated['message'] ?? ''), 120),
+            ]);
+        }
+
+        // flash notif reply (officer)
+        session()->flash('notif', [
+            'type' => 'reply',
+            'message' => 'Komentar baru dikirim ke tiket #' . $ticket->ticket_no,
+        ]);
+
+        return back()->with('status', 'Balasan terkirim.');
+    }
+
+    protected function storeAttachment($file, string $dir): string
+    {
+        $name = Str::uuid()->toString() . '.' . $file->getClientOriginalExtension();
+        return $file->storeAs($dir, $name, 'public');
     }
 }
