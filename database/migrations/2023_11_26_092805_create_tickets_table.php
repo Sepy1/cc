@@ -43,34 +43,8 @@ return new class extends Migration {
             return;
         }
 
-        // Jika tabel sudah ada: tambahkan kolom yang belum ada (idempotent)
-        Schema::table('tickets', function (Blueprint $table) {
-            if (!Schema::hasColumn('tickets', 'ticket_no')) $table->string('ticket_no')->nullable()->after('id');
-            if (!Schema::hasColumn('tickets', 'reporter_name')) $table->string('reporter_name')->nullable()->after('ticket_no');
-            if (!Schema::hasColumn('tickets', 'phone')) $table->string('phone', 50)->nullable()->after('reporter_name');
-            if (!Schema::hasColumn('tickets', 'email')) $table->string('email')->nullable()->after('phone');
-            if (!Schema::hasColumn('tickets', 'category')) $table->string('category')->nullable()->after('email');
-            if (!Schema::hasColumn('tickets', 'title')) $table->string('title')->nullable()->after('category');
-            if (!Schema::hasColumn('tickets', 'detail')) $table->text('detail')->nullable()->after('title');
-            if (!Schema::hasColumn('tickets', 'status')) $table->string('status')->default('open')->after('detail');
-
-            if (!Schema::hasColumn('tickets', 'assigned_to')) $table->unsignedBigInteger('assigned_to')->nullable()->after('status');
-            if (!Schema::hasColumn('tickets', 'assigned_at')) $table->timestamp('assigned_at')->nullable()->after('assigned_to');
-            if (!Schema::hasColumn('tickets', 'tindak_lanjut')) $table->text('tindak_lanjut')->nullable()->after('assigned_at');
-            if (!Schema::hasColumn('tickets', 'reporter_type')) $table->string('reporter_type')->nullable()->after('tindak_lanjut');
-            if (!Schema::hasColumn('tickets', 'is_nasabah')) $table->boolean('is_nasabah')->default(false)->after('reporter_type');
-            if (!Schema::hasColumn('tickets', 'id_ktp')) $table->string('id_ktp')->nullable()->after('is_nasabah');
-            if (!Schema::hasColumn('tickets', 'nomor_rekening')) $table->string('nomor_rekening')->nullable()->after('id_ktp');
-            if (!Schema::hasColumn('tickets', 'nama_ibu')) $table->string('nama_ibu')->nullable()->after('nomor_rekening');
-            if (!Schema::hasColumn('tickets', 'alamat')) $table->text('alamat')->nullable()->after('nama_ibu');
-            if (!Schema::hasColumn('tickets', 'kode_kantor')) $table->string('kode_kantor')->nullable()->after('alamat');
-            if (!Schema::hasColumn('tickets', 'attachment_ktp')) $table->string('attachment_ktp')->nullable()->after('kode_kantor');
-            if (!Schema::hasColumn('tickets', 'attachment_bukti')) $table->string('attachment_bukti')->nullable()->after('attachment_ktp');
-            if (!Schema::hasColumn('tickets', 'media_closing')) $table->string('media_closing')->nullable()->after('attachment_bukti');
-            if (!Schema::hasColumn('tickets', 'closing_at')) $table->timestamp('closing_at')->nullable()->after('media_closing');
-            if (!Schema::hasColumn('tickets', 'tempat_lahir')) $table->string('tempat_lahir')->nullable()->after('alamat');
-            if (!Schema::hasColumn('tickets', 'tgl_lahir')) $table->date('tgl_lahir')->nullable()->after('tempat_lahir');
-        });
+        // Jika tabel sudah ada: jangan tambah kolom apa pun di sini
+        // Kolom tambahan akan diabaikan untuk mencegah duplikasi.
     }
 
     public function down(): void

@@ -7,11 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        if (!Schema::hasTable('tickets')) {
-            // Tabel belum ada, biarkan migration create_tickets yang membuatnya.
-            return;
-        }
-
+        if (!Schema::hasTable('tickets')) return;
         Schema::table('tickets', function (Blueprint $table) {
             if (!Schema::hasColumn('tickets', 'tempat_lahir')) {
                 $table->string('tempat_lahir')->nullable()->after('alamat');
@@ -21,18 +17,12 @@ return new class extends Migration {
             }
         });
     }
-
     public function down(): void
     {
         if (!Schema::hasTable('tickets')) return;
-
         Schema::table('tickets', function (Blueprint $table) {
-            if (Schema::hasColumn('tickets', 'tgl_lahir')) {
-                $table->dropColumn('tgl_lahir');
-            }
-            if (Schema::hasColumn('tickets', 'tempat_lahir')) {
-                $table->dropColumn('tempat_lahir');
-            }
+            if (Schema::hasColumn('tickets', 'tgl_lahir')) $table->dropColumn('tgl_lahir');
+            if (Schema::hasColumn('tickets', 'tempat_lahir')) $table->dropColumn('tempat_lahir');
         });
     }
 };
