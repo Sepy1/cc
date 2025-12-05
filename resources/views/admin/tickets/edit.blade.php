@@ -65,3 +65,22 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+<?php
+// ...existing code...
+use Illuminate\Http\Request;
+// ubah import Rule menjadi alias
+use Illuminate\Validation\Rule as ValidationRule;
+use Illuminate\Support\Facades\DB;
+// ...existing code...
+
+    public function update(Request $request, Ticket $ticket)
+    {
+        $rules = [
+            'status' => ['required', ValidationRule::in(['open','pending','resolved','closed','rejected'])],
+            // ...lainnya...
+        ];
+
+        $data = $request->validate($rules);
+        // ...existing code...
+    }
+// ...existing code...

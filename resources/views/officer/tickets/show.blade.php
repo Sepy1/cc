@@ -58,10 +58,7 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
                             {{ ucfirst($ticket->status ?? 'Unknown') }}
                         </span>
 
-                        <div class="text-right text-xs text-gray-400">
-                            <div>Dibuat: {{ $ticket->created_at?->format('d M Y H:i') ?? '-' }}</div>
-                            <div class="mt-1">ID: <span class="text-gray-600">{{ $ticket->id }}</span></div>
-                        </div>
+                       
 
                         <a href="#" class="open-history inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
                            title="Lihat riwayat tiket">
@@ -86,23 +83,7 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
                         <div class="text-xs text-gray-500">Kategori</div>
                         <div class="mt-1 text-sm text-gray-800">{{ $ticket->category ?? '-' }}</div>
                     </div>
-                    <div class="p-3 bg-white border border-gray-100 rounded-lg">
-                        <div class="text-xs text-gray-500">Kontak</div>
-                        <div class="mt-1 flex items-center gap-3">
-                            <span class="text-sm text-gray-800">{{ $ticket->phone ?? '-' }}</span>
-
-                            @if($waNumber)
-                                <a href="https://wa.me/{{ $waNumber }}" target="_blank"
-                                   class="inline-flex items-center px-2 py-1 border rounded text-sm text-green-700 hover:bg-green-50"
-                                   title="Chat via WhatsApp">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-4 h-4 fill-current mr-1">
-                                        <path d="M16.002 3.2c-7.062 0-12.8 5.738-12.8 12.8 0 2.262.593 4.469 1.721 6.414L3.2 28.8l6.595-1.689a12.744 12.744 0 0 0 6.207 1.59h.001c7.062 0 12.799-5.738 12.799-12.8s-5.737-12.8-12.8-12.8zm0 23.01h-.001a10.17 10.17 0 0 1-5.186-1.42l-.372-.221-3.916 1.002 1.045-3.826-.243-.393A10.132 10.132 0 0 1 5.6 16c0-5.75 4.652-10.4 10.402-10.4 5.75 0 10.4 4.65 10.4 10.4 0 5.75-4.65 10.4-10.4 10.4zm5.645-7.626c-.308-.154-1.82-.898-2.103-1-.282-.103-.487-.154-.692.154-.205.308-.794 1-.973 1.205-.18.205-.359.231-.667.077-.308-.154-1.302-.48-2.48-1.53-.917-.817-1.536-1.828-1.716-2.136-.18-.308-.019-.474.135-.628.139-.138.308-.359.462-.539.154-.18.205-.308.308-.513.103-.205.051-.385-.026-.539-.077-.154-.692-1.667-.948-2.288-.249-.597-.503-.516-.692-.526-.18-.01-.385-.01-.59-.01a1.14 1.14 0 0 0-.821.385c-.282.308-1.079 1.054-1.079 2.57 0 1.515 1.105 2.974 1.259 3.179.154.205 2.178 3.326 5.284 4.66.738.318 1.313.507 1.762.648.74.236 1.414.203 1.948.123.594-.088 1.82-.744 2.078-1.462.257-.718.257-1.333.18-1.462-.077-.128-.282-.205-.59-.359z"/>
-                                    </svg>
-                                    WA
-                                </a>
-                            @endif
-                        </div>
-                    </div>
+                    
                     <div class="p-3 bg-white border border-gray-100 rounded-lg">
                         <div class="text-xs text-gray-500">Terakhir diupdate</div>
                         <div class="mt-1 text-sm text-gray-800">{{ $ticket->updated_at?->diffForHumans() ?? '-' }}</div>
@@ -146,21 +127,51 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
 
                 {{-- Reply form --}}
                 <div id="replySection">
-                    <form action="{{ route('officer.tickets.reply', $ticket->id) }}" method="POST" class="space-y-3">
-                         @csrf
-                         <label class="sr-only" for="message">Balasan</label>
-                         <textarea name="message" id="message" rows="4" required
-                             class="w-full border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                             placeholder="Tulis balasan..."></textarea>
+        <form action="{{ route('officer.tickets.reply', $ticket->id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+            @csrf
+            <label class="sr-only" for="message">Balasan</label>
+            <textarea name="message" id="message" rows="4"
+                class="w-full border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Tulis balasan (opsional)..."></textarea>
 
-                        <div class="mt-3 flex items-center gap-3 flex-wrap">
-                            <button type="submit"
-                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
-                                Kirim Balasan
-                            </button>
-                        </div>
-                     </form>
-                 </div>
+            {{-- Lampiran (opsional) --}}
+            <div class="mt-3">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Lampiran (opsional)</label>
+                <input
+                    type="file"
+                    name="attachment"
+                    id="attachment"
+                    class="hidden"
+                    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.zip">
+
+                {{-- Row: lampiran kiri + kirim kanan --}}
+               <div class="flex items-center gap-3 flex-wrap justify-between">
+                   <div class="flex items-center gap-3 min-w-0">
+                        <label for="attachment"
+                               class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium cursor-pointer hover:bg-indigo-700">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                            Pilih Lampiran
+                        </label>
+                        <span id="attachmentName" class="text-sm text-gray-600 truncate max-w-[40ch]">Belum ada file</span>
+                        <button type="button" id="clearAttachment" class="hidden text-xs text-gray-500 hover:text-gray-700 underline">Bersihkan</button>
+                   </div>
+
+                   <button type="submit"
+                           class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
+                       Kirim Balasan
+                   </button>
+                </div>
+
+                <p class="text-xs text-gray-500 mt-2">Max 5MB. Format: JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, ZIP</p>
+                @error('attachment')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+        </form>
+    </div>
             </div>
 
             {{-- Sidebar --}}
@@ -236,7 +247,10 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
                             @php
                                 $typeLabel = ucfirst(str_replace('_', ' ', $ev->type));
                                 $actor = $ev->user?->name ?? 'Sistem';
-                                $meta = is_array($ev->meta) ? $ev->meta : (is_string($ev->meta) ? json_decode($ev->meta, true) : []);
+                                // meta bisa berupa array, json string, atau null
+                                $meta = is_array($ev->meta)
+                                    ? $ev->meta
+                                    : (is_string($ev->meta) ? (json_decode($ev->meta, true) ?: []) : []);
                             @endphp
                             <li class="mb-6 ml-6">
                                 <span class="absolute -left-3 flex items-center justify-center w-6 h-6 bg-indigo-600 rounded-full ring-8 ring-white text-white text-xs">
@@ -244,51 +258,61 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
                                 </span>
                                 <div class="text-xs text-gray-400">{{ $ev->created_at?->format('d M Y H:i') }}</div>
                                 <div class="mt-1">
-                                    <div class="text-sm font-semibold text-gray-800">{{ $typeLabel }} <span class="text-gray-500 text-xs font-normal">oleh {{ $actor }}</span></div>
+                                    <div class="text-sm font-semibold text-gray-800">
+                                        {{ $typeLabel }} <span class="text-gray-500 text-xs font-normal">oleh {{ $actor }}</span>
+                                    </div>
 
-                                    @if(!empty($meta) && is_array($meta))
-                                        <div class="mt-2 text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-md p-3 space-y-1">
-                                            @if((isset($meta['from']) || isset($meta['to'])) && !isset($meta['changes']))
-                                                @php $from = $meta['from'] ?? '-'; $to = $meta['to'] ?? '-'; @endphp
-                                                <div><strong>Status tiket diubah:</strong> dari <span class="font-medium">{{ $from }}</span> menjadi <span class="font-medium">{{ $to }}</span> <span class="text-gray-500 text-xs">oleh {{ $actor }}</span></div>
+                                    {{-- Detail meta --}}
+                                    @if(!empty($meta))
+                                        <div class="mt-2 text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-md p-3 space-y-2">
+                                            {{-- Prefer from/to jika ada --}}
+                                            @if(isset($meta['from']) || isset($meta['to']))
+                                                <div><strong>Status tiket diubah:</strong>
+                                                    
+                                                    menjadi <span class="font-medium">{{ $meta['to'] ?? '-' }}</span>
+                                                </div>
+                                            {{-- Jika hanya ada "status" lama, render sebagai to --}}
+                                            @elseif(isset($meta['status']))
+                                                <div>Status tiket diubah
+                                                   menjadi <span class="font-medium">{{ $meta['status'] }}</span>
+                                                </div>  
                                             @endif
 
+                                            {{-- Changes umum --}}
                                             @if(isset($meta['changes']) && is_array($meta['changes']))
                                                 @foreach($meta['changes'] as $field => $change)
                                                     @php
                                                         $fieldLabel = ucfirst(str_replace('_', ' ', $field));
-                                                        $from = $change['from'] ?? '-';
-                                                        $to   = $change['to'] ?? '-';
+                                                        $from = is_array($change) ? ($change['from'] ?? '-') : '-';
+                                                        $to   = is_array($change) ? ($change['to'] ?? '-')   : (is_string($change) ? $change : '-');
                                                     @endphp
                                                     @if(strtolower($field) === 'status')
-                                                        <div><strong>Status tiket diubah:</strong> dari <span class="font-medium">{{ $from }}</span> menjadi <span class="font-medium">{{ $to }}</span> <span class="text-gray-500 text-xs">oleh {{ $actor }}</span></div>
+                                                        <div>Status tiket diubah
+                                                            
+                                                            menjadi <span class="font-medium">{{ $to }}</span>
+                                                        </div>
                                                     @else
-                                                        <div><strong>{{ $fieldLabel }} diubah:</strong> <span class="font-medium">{{ $from }}</span> → <span class="font-medium">{{ $to }}</span></div>
+                                                        <div><strong>{{ $fieldLabel }} diubah:</strong>
+                                                            <span class="font-medium">{{ $from }}</span> → <span class="font-medium">{{ $to }}</span>
+                                                        </div>
                                                     @endif
                                                 @endforeach
                                             @endif
 
-                                            @if(isset($meta['tindak_lanjut']))
-                                                <div class="mt-2 text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-md p-3">
-                                                    <strong>Tindak lanjut:</strong>
-                                                    <div class="mt-1 whitespace-pre-line">{{ $meta['tindak_lanjut'] }}</div>
-                                                </div>
-                                            @endif
-
+                                            {{-- Fallback: tampilkan meta lain yang dikenal --}}
                                             @if(isset($meta['assigned_to_name']) || isset($meta['assigned_to']))
                                                 <div><strong>Assigned ke:</strong> <span class="font-medium">{{ $meta['assigned_to_name'] ?? ('User #' . ($meta['assigned_to'] ?? '-')) }}</span></div>
                                             @endif
-
                                             @if(isset($meta['snippet']))
                                                 <div><strong>Isi singkat:</strong> {{ $meta['snippet'] }}</div>
                                             @endif
 
                                             @php
-                                                $known = isset($meta['assigned_to_name']) || isset($meta['assigned_to']) || isset($meta['from']) || isset($meta['to']) || isset($meta['changes']) || isset($meta['snippet']) || isset($meta['ticket_no']) || isset($meta['title']);
+                                                $known = isset($meta['from']) || isset($meta['to']) || isset($meta['status']) || isset($meta['changes']) || isset($meta['assigned_to_name']) || isset($meta['assigned_to']) || isset($meta['snippet']);
                                             @endphp
-                                            @if(! $known)
+                                            @unless($known)
                                                 <pre class="text-xs text-gray-600 whitespace-pre-wrap">{{ json_encode($meta, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE) }}</pre>
-                                            @endif
+                                            @endunless
                                         </div>
                                     @endif
                                 </div>
@@ -310,7 +334,7 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
 @push('scripts')
 <script>
 (function () {
-    // Komentar: auto-scroll ke paling bawah dalam box saja
+    // Auto-scroll komentar ke bawah (dalam box)
     function scrollCommentsBottom() {
         const box = document.getElementById('commentsScroll');
         if (box) box.scrollTop = box.scrollHeight;
@@ -321,7 +345,21 @@ $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
         scrollCommentsBottom();
     }
 
-    // History modal (open/close) jika belum ada
+    // Attachment UI (nama file + bersihkan)
+    const fileInput = document.getElementById('attachment');
+    const fileName  = document.getElementById('attachmentName');
+    const clearBtn  = document.getElementById('clearAttachment');
+
+    function updateName() {
+        const name = fileInput?.files?.length ? fileInput.files[0].name : 'Belum ada file';
+        if (fileName) fileName.textContent = name;
+        if (clearBtn) clearBtn.classList.toggle('hidden', !(fileInput && fileInput.value));
+    }
+    fileInput?.addEventListener('change', updateName);
+    clearBtn?.addEventListener('click', function () { if (fileInput) { fileInput.value = ''; updateName(); } });
+    updateName();
+
+    // History modal handlers (jika ada)
     const openHistoryButtons = document.querySelectorAll('.open-history');
     const historyRoot = document.getElementById('historyModal');
     const historyPanel = document.getElementById('historyModalPanel');

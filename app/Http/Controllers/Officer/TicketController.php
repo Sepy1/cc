@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Officer;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Ticket;
 use App\Models\TicketReply;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
@@ -61,46 +62,24 @@ class TicketController extends Controller
      */
     public function reply(Request $request, Ticket $ticket)
     {
-        if ($ticket->assigned_to !== Auth::id()) {
-            abort(403, 'Unauthorized');
-        }
-
-        $request->validate([
-            'message' => 'required|string|max:5000',
-            'status'  => ['nullable', Rule::in(['pending','resolved'])],
+        $data = $request->validate([
+            'message'    => ['nullable', 'string', 'max:10000'],
+            'attachment' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,pdf,doc,docx,xls,xlsx,zip'],
         ]);
 
-        DB::beginTransaction();
-        try {
-            TicketReply::create([
-                'ticket_id' => $ticket->id,
-                'user_id'   => Auth::id(),
-                'message'   => $request->message,
-            ]);
-
-            // jika ada status dikirimkan dan berbeda, ubah status tiket
-            if ($request->filled('status') && $request->status !== $ticket->status) {
-                // gunakan helper model agar event tercatat
-                $ok = $ticket->setStatus($request->status, Auth::id());
-                if (! $ok) {
-                    throw new Exception('Gagal menyimpan status tiket');
-                }
-            }
-
-            $ticket->touch();
-            DB::commit();
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Officer reply failed', [
-                'ticket_id' => $ticket->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return redirect()->back()->with('error', 'Gagal mengirim balasan: ' . $e->getMessage());
+        $path = null;
+        if ($request->hasFile('attachment')) {
+            $path = $request->file('attachment')->store('attachments', 'public');
         }
 
-        return redirect()->route('officer.tickets.show', $ticket->id)
-                         ->with('success', 'Balasan berhasil dikirim.');
+        $reply = new TicketReply();
+        $reply->ticket_id  = $ticket->id;
+        $reply->user_id    = $request->user()->id;
+        $reply->message    = $data['message'] ?? null;
+        $reply->attachment = $path;
+        $reply->save();
+
+        return redirect()->route('officer.tickets.show', $ticket)->with('status', 'Balasan terkirim.');
     }
 
     /**
