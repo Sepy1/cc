@@ -142,17 +142,7 @@
                 Buat Tiket
             </a>
 
-            {{-- Edit Mode Toggle --}}
-            <div class="flex items-center gap-2">
-                <label for="editMode" class="text-sm text-gray-600">Edit mode</label>
-                <button id="editMode" type="button"
-                    class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 transition focus:outline-none"
-                    aria-pressed="false"
-                    >
-                    <span class="sr-only">Toggle edit mode</span>
-                    <span aria-hidden="true" class="dot absolute left-1 w-4 h-4 bg-white rounded-full shadow transform transition"></span>
-                </button>
-            </div>
+           
         </div>
     </div>
 

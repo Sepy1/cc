@@ -20,13 +20,32 @@
     .mt-8 { margin-top: 8px; }
     .mt-12 { margin-top: 12px; }
     .mt-20 { margin-top: 20px; }
-    .sign { width: 32%; display: inline-block; text-align: center; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .brand img { height:38px; }
+    /* Hindari pecah halaman pada blok tanda tangan */
+    .sign-wrap { display: block; page-break-inside: avoid; margin-top: 16px; }
+    .sign { width: 32%; display: inline-block; text-align: center; vertical-align: top; }
+    /* Sedikit kurangi jarak agar muat satu halaman */
+    .sign .space { height: 48px; }
 </style>
 </head>
 <body>
+    @php
+        // Render logo hanya jika GD tersedia
+        $canRenderLogo = extension_loaded('gd') || function_exists('imagecreate');
+        $logoPath = public_path('images/logo.png');
+        $logoData = ($canRenderLogo && file_exists($logoPath)) ? base64_encode(file_get_contents($logoPath)) : null;
+    @endphp
     <div class="header">
-        <div>PT BPR BKK JAWA TENGAH (Perseroda)</div>
-        <div class="muted">Laporan Bulanan Call Center</div>
+        <div class="brand">
+            @if($logoData)
+                <img src="data:image/png;base64{{ ':' . $logoData }}" alt="Logo">
+            @endif
+            <div>
+                <div>PT BPR BKK JAWA TENGAH (Perseroda)</div>
+                <div class="muted">Laporan Bulanan Call Center</div>
+            </div>
+        </div>
         <div class="mt-8">
             Bulan: <strong>{{ $bulanNama }}</strong><br>
             Tahun: <strong>{{ $tahunNama }}</strong>
@@ -98,20 +117,20 @@
         </tbody>
     </table>
 
-    <div class="mt-20">
+    <div class="sign-wrap">
         <div class="sign">
             <div>Dibuat</div>
-            <div style="height:64px;"></div>
+            <div class="space"></div>
             <div class="small"><u>CSA</u></div>
         </div>
         <div class="sign">
             <div>Diperiksa</div>
-            <div style="height:64px;"></div>
+            <div class="space"></div>
             <div class="small"><u>Kepala Bidang Sekretaris</u><br>Perusahaan &amp; Humas</div>
         </div>
         <div class="sign">
             <div>Disetujui</div>
-            <div style="height:64px;"></div>
+            <div class="space"></div>
             <div class="small"><u>Sekretaris Perusahaan</u></div>
         </div>
     </div>

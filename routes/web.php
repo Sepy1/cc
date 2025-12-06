@@ -14,8 +14,8 @@ use App\Http\Controllers\Admin\ReportController;
 |--------------------------------------------------------------------------
 */
 Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+      return redirect()->route('login');
+      });
 
 /*
 |--------------------------------------------------------------------------

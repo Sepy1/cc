@@ -87,11 +87,18 @@
     /* submit area left aligned like the image */
     .submit-row{display:flex; gap:18px; align-items:center; margin-top:18px}
 
+    .brand { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+    .brand img { height:36px; }
+    .brand .appname { font-weight:700; font-size:18px; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
+      <div class="brand">
+        <img src="/images/logo.png" alt="Logo">
+        <div class="appname">Call Center</div>
+      </div>
       <h1>Buat Tiket — Nasabah</h1>
 
       <form id="ticketForm" autocomplete="off" enctype="multipart/form-data" novalidate>
