@@ -110,6 +110,10 @@ Route::middleware(['auth', 'role:admin'])
             session(['notif_seen_at_admin' => now()]);
             return response()->noContent();
         })->name('notifications.seen');
+
+        // Profile
+        Route::get('/profile', [\App\Http\Controllers\Admin\TicketAdminController::class, 'showProfile'])->name('profile.show');
+        Route::post('/profile', [\App\Http\Controllers\Admin\TicketAdminController::class, 'updateProfile'])->name('profile.update');
     });
 
 /*
@@ -134,6 +138,10 @@ Route::middleware(['auth', 'role:officer'])
             session(['notif_seen_at_officer' => now()]);
             return response()->noContent();
         })->name('notifications.seen');
+
+        // Profile
+        Route::get('/profile', [\App\Http\Controllers\Officer\TicketController::class, 'showProfile'])->name('profile.show');
+        Route::post('/profile', [\App\Http\Controllers\Officer\TicketController::class, 'updateProfile'])->name('profile.update');
     });
 
 /*

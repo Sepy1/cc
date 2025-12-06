@@ -27,8 +27,16 @@
                         </x-nav-link>
                     @endif
 
-                    {{-- Profile link --}}
-                    <x-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">
+                    {{-- Profile link (role-aware) --}}
+                    @php
+                        $profileRoute = (Auth::check() && Auth::user()->role === 'admin')
+                            ? route('admin.profile.show')
+                            : ((Auth::check() && Auth::user()->role === 'officer')
+                                ? route('officer.profile.show')
+                                : route('profile.edit')); // fallback Breeze
+                        $isActive = request()->routeIs('admin.profile.*') || request()->routeIs('officer.profile.*') || request()->routeIs('profile.*');
+                    @endphp
+                    <x-nav-link :href="$profileRoute" :active="$isActive">
                         {{ __('Profile') }}
                     </x-nav-link>
                 </div>
@@ -50,7 +58,14 @@
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit')">
+                        @php
+                            $profileRoute = (Auth::check() && Auth::user()->role === 'admin')
+                                ? route('admin.profile.show')
+                                : ((Auth::check() && Auth::user()->role === 'officer')
+                                    ? route('officer.profile.show')
+                                    : route('profile.edit'));
+                        @endphp
+                        <x-dropdown-link :href="$profileRoute">
                             {{ __('Profile') }}
                         </x-dropdown-link>
 
@@ -98,8 +113,15 @@
                 </x-responsive-nav-link>
             @endif
 
-            {{-- Profile responsive link --}}
-            <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">
+            {{-- Profile responsive link (role-aware) --}}
+            @php
+                $profileRoute = (Auth::check() && Auth::user()->role === 'admin')
+                    ? route('admin.profile.show')
+                    : ((Auth::check() && Auth::user()->role === 'officer')
+                        ? route('officer.profile.show')
+                        : route('profile.edit'));
+            @endphp
+            <x-responsive-nav-link :href="$profileRoute" :active="request()->routeIs('admin.profile.*') || request()->routeIs('officer.profile.*') || request()->routeIs('profile.*')">
                 {{ __('Profile') }}
             </x-responsive-nav-link>
         </div>
@@ -112,7 +134,7 @@
             </div>
 
             <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit')">
+                <x-responsive-nav-link :href="$profileRoute">
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
 

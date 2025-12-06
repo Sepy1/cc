@@ -130,9 +130,23 @@
                     placeholder="Cari nomor, judul, reporter..."
                     class="w-64 sm:w-80 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
+
+                {{-- { added } Filter by status --}}
+                <label for="status" class="sr-only">Status</label>
+                @php
+                    $statuses = ['' => 'Semua', 'open' => 'Open', 'pending' => 'Pending', 'progress' => 'Progress', 'resolved' => 'Resolved', 'closed' => 'Closed', 'rejected' => 'Rejected'];
+                    $currentStatus = request('status', '');
+                @endphp
+                <select id="status" name="status"
+                        class="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    @foreach($statuses as $val => $label)
+                        <option value="{{ $val }}" @selected($currentStatus === $val)>{{ $label }}</option>
+                    @endforeach
+                </select>
+
                 <button type="submit" class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
                     <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18A7.5 7.5 0 1010.5 3a7.5 7.5 0 000 15z"/></svg>
-                    Cari
+                    Tampilkan
                 </button>
             </form>
 
@@ -141,8 +155,6 @@
                 <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Buat Tiket
             </a>
-
-           
         </div>
     </div>
 
@@ -212,9 +224,7 @@
                 <td class="px-4 py-3 text-right text-sm flex items-center gap-3 justify-end">
                     <a href="{{ route('admin.tickets.show', $t->id) }}" class="text-indigo-600 hover:underline">Lihat</a>
 
-                    <a href="{{ route('admin.tickets.edit', $t->id) }}"
-                       class="text-gray-600 hover:text-gray-800 small-edit">
-                        Edit
+                   
                     </a>
                 </td>
             </tr>

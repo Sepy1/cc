@@ -25,17 +25,25 @@ class TicketAdminController extends Controller
     public function index(Request $request)
     {
         $q = $request->query('q');
+        $status = $request->query('status'); // { added }
 
         $tickets = Ticket::query()
             ->when($q, function ($query, $q) {
-                $query->where('ticket_no', 'like', "%{$q}%")
-                      ->orWhere('reporter_name', 'like', "%{$q}%")
-                      ->orWhere('email', 'like', "%{$q}%")
-                      ->orWhere('phone', 'like', "%{$q}%")
-                      ->orWhere('title', 'like', "%{$q}%");
+                $query->where(function($qq) use ($q) {
+                    $qq->where('ticket_no', 'like', "%{$q}%")
+                       ->orWhere('reporter_name', 'like', "%{$q}%")
+                       ->orWhere('email', 'like', "%{$q}%")
+                       ->orWhere('phone', 'like', "%{$q}%")
+                       ->orWhere('title', 'like', "%{$q}%");
+                });
+            })
+            // { added } filter by status if provided and valid
+            ->when($status && in_array($status, ['open','pending','progress','resolved','closed','rejected']), function($query) use ($status) {
+                $query->where('status', $status);
             })
             ->latest()
-            ->paginate(12);
+            ->paginate(12)
+            ->appends($request->query()); // keep query string
 
         return view('admin.tickets.index', compact('tickets'));
     }
@@ -372,5 +380,31 @@ class TicketAdminController extends Controller
         return redirect()
             ->route('admin.tickets.show', $ticket->id)
             ->with('success', 'Status tiket diubah menjadi "' . ucfirst($data['status']) . '"');
+    }
+
+    public function showProfile()
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        return view('admin.profile', compact('user'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        $data = $request->validate([
+            'name' => ['required','string','max:255'],
+            'email' => ['required','email','max:255', \Illuminate\Validation\Rule::unique('users')->ignore($user->id)],
+            'password' => ['nullable','confirmed','min:8'],
+        ]);
+
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        if (!empty($data['password'])) {
+            $user->password = \Illuminate\Support\Facades\Hash::make($data['password']);
+        }
+        $user->save();
+
+        return back()->with('success', 'Profil diperbarui.');
     }
 }

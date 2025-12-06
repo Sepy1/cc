@@ -276,6 +276,32 @@ class TicketController extends Controller
         return back()->with('status', 'Balasan terkirim.');
     }
 
+    public function showProfile()
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        return view('officer.profile', compact('user'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        $data = $request->validate([
+            'name' => ['required','string','max:255'],
+            'email' => ['required','email','max:255', \Illuminate\Validation\Rule::unique('users')->ignore($user->id)],
+            'password' => ['nullable','confirmed','min:8'],
+        ]);
+
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        if (!empty($data['password'])) {
+            $user->password = \Illuminate\Support\Facades\Hash::make($data['password']);
+        }
+        $user->save();
+
+        return back()->with('success', 'Profil diperbarui.');
+    }
+
     protected function storeAttachment($file, string $dir): string
     {
         $name = Str::uuid()->toString() . '.' . $file->getClientOriginalExtension();
