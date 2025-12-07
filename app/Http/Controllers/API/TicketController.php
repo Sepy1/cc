@@ -116,6 +116,25 @@ class TicketController extends Controller
                 return $t;
             });
 
+            // Email ke reporter saat tiket dibuat (API) pakai template view
+            try {
+                if (!empty($ticket->email)) {
+                    \Illuminate\Support\Facades\Mail::send('emails.ticket', [
+                        'kind'          => 'created',
+                        'ticket_no'     => $ticket->ticket_no,
+                        'title'         => $ticket->title,
+                        'reporter_name' => $ticket->reporter_name,
+                        'status'        => $ticket->status,
+                        'actionText'    => 'Lihat Tiket',
+                        'actionUrl'     => '', // hide button for reporter
+                    ], function ($m) use ($ticket) {
+                        $m->to($ticket->email)->subject('[' . config('app.name') . '] Tiket Dibuat: ' . $ticket->ticket_no);
+                    });
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('api_mail_open_failed', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Ticket created',

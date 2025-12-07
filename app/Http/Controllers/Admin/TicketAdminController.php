@@ -104,6 +104,25 @@ class TicketAdminController extends Controller
             ]);
         }
 
+        // Email reporter (hide button by sending empty actionUrl)
+        try {
+            if (!empty($ticket->email)) {
+                \Illuminate\Support\Facades\Mail::send('emails.ticket', [
+                    'kind'          => 'created',
+                    'ticket_no'     => $ticket->ticket_no,
+                    'title'         => $ticket->title,
+                    'reporter_name' => $ticket->reporter_name,
+                    'status'        => $ticket->status,
+                    'actionText'    => 'Lihat Tiket',
+                    'actionUrl'     => '', // hide button for reporter
+                ], function ($m) use ($ticket) {
+                    $m->to($ticket->email)->subject('[' . config('app.name') . '] Tiket Dibuat: ' . $ticket->ticket_no);
+                });
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('mail_open_failed', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
+        }
+
         return redirect()->route('admin.tickets.show', $ticket->id)
                          ->with('success', 'Tiket berhasil dibuat.');
     }
@@ -225,6 +244,27 @@ class TicketAdminController extends Controller
             ]);
         }
 
+        // Email reporter (hide button)
+        try {
+            if (!empty($ticket->email)) {
+                \Illuminate\Support\Facades\Mail::send('emails.ticket', [
+                    'kind'          => 'status_changed',
+                    'ticket_no'     => $ticket->ticket_no,
+                    'title'         => $ticket->title,
+                    'reporter_name' => $ticket->reporter_name,
+                    'old_status'    => $originalStatus ?? null,
+                    'new_status'    => $ticket->status,
+                    'status'        => $ticket->status,
+                    'actionText'    => 'Lihat Tiket',
+                    'actionUrl'     => '', // hide button for reporter
+                ], function ($m) use ($ticket) {
+                    $m->to($ticket->email)->subject('[' . config('app.name') . '] Status Diubah: ' . $ticket->ticket_no);
+                });
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('mail_status_failed', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
+        }
+
         return redirect()->route('admin.tickets.show', $ticket->id)->with('success', 'Tiket diperbarui.');
     }
 
@@ -294,58 +334,78 @@ class TicketAdminController extends Controller
      * Assign ticket to an officer
      */
     public function assign(Request $request, Ticket $ticket)
-    {
-        $data = $request->validate([
-            'user_id' => ['required','integer','exists:users,id'],
-        ]);
+{
+    $data = $request->validate([
+        'user_id' => ['required','integer','exists:users,id'],
+    ]);
 
-        $assignee = \App\Models\User::findOrFail($data['user_id']);
+    $assignee = \App\Models\User::findOrFail($data['user_id']);
 
+    try {
+        DB::beginTransaction();
+
+        $ticket->assigned_to = $assignee->id;
+        $ticket->assigned_at = now();
+        if (in_array($ticket->status, ['open','rejected'])) {
+            $ticket->status = 'pending';
+        }
+        $ticket->save();
+
+        // catat riwayat assign
         try {
-            DB::beginTransaction();
-
-            $ticket->assigned_to = $assignee->id;
-            $ticket->assigned_at = now();
-            if (in_array($ticket->status, ['open','rejected'])) {
-                $ticket->status = 'pending';
-            }
-            $ticket->save();
-
-            // catat riwayat assign
-            try {
-                DB::table('ticket_events')->insert([
-                    'ticket_id' => $ticket->id,
-                    'user_id'   => Auth::id(),
-                    'type'      => 'assigned',
-                    'meta'      => json_encode([
-                        'assigned_to'      => $assignee->id,
-                        'assigned_to_name' => $assignee->name,
-                    ]),
-                    'created_at'=> now(),
-                    'updated_at'=> now(),
-                ]);
-            } catch (\Throwable $e) {
-                Log::warning('ticket_events_insert_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
-            }
-
-            DB::commit();
+            DB::table('ticket_events')->insert([
+                'ticket_id' => $ticket->id,
+                'user_id'   => Auth::id(),
+                'type'      => 'assigned',
+                'meta'      => json_encode([
+                    'assigned_to'      => $assignee->id,
+                    'assigned_to_name' => $assignee->name,
+                ]),
+                'created_at'=> now(),
+                'updated_at'=> now(),
+            ]);
         } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('assign_ticket_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
-            return back()->with('error', 'Gagal assign tiket. Detail: '.$e->getMessage());
+            Log::warning('ticket_events_insert_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
         }
 
-        // kirim email jika perlu (dibuat non-blocking)
-        try {
-            if (class_exists(\App\Mail\TicketAssigned::class) && !empty($assignee->email)) {
-                \Illuminate\Support\Facades\Mail::to($assignee->email)->queue(new \App\Mail\TicketAssigned($ticket));
-            }
-        } catch (\Throwable $e) {
-            Log::warning('assign_mail_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
-        }
-
-        return back()->with('success', 'Tiket berhasil di-assign ke '.$assignee->name);
+        DB::commit();
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        Log::error('assign_ticket_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
+        return back()->with('error', 'Gagal assign tiket. Detail: '.$e->getMessage());
     }
+
+    // siapkan data untuk email (pakai template emails.ticket)
+    $mailData = [
+        'kind'          => 'assigned',
+        'ticket_no'     => $ticket->ticket_no,
+        'title'         => $ticket->title,
+        'reporter_name' => $ticket->reporter_name,
+        'status'        => $ticket->status,
+        'actionText'    => 'Lihat Tiket',
+        'actionUrl'     => route('admin.tickets.show', $ticket->id),
+    ];
+
+    // kirim email (pakai mailable jika ada, kalau tidak pakai template view)
+    try {
+        if (!empty($assignee->email)) {
+            if (class_exists(\App\Mail\TicketAssigned::class)) {
+                // kalau mailable tersedia, gunakan (diasumsikan mailable akan menerima Ticket)
+                \Illuminate\Support\Facades\Mail::to($assignee->email)->queue(new \App\Mail\TicketAssigned($ticket));
+            } else {
+                // fallback: gunakan view 'emails.ticket' (sama dengan pembuatan tiket)
+                \Illuminate\Support\Facades\Mail::send('emails.ticket', $mailData, function ($m) use ($assignee, $ticket) {
+                    $m->to($assignee->email)
+                      ->subject('[' . config('app.name') . '] Tiket Di-assign: ' . $ticket->ticket_no);
+                });
+            }
+        }
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::warning('assign_mail_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
+    }
+
+    return back()->with('success', 'Tiket berhasil di-assign ke '.$assignee->name);
+}
 
     /**
      * Quick change ticket status (Admin)
@@ -376,6 +436,27 @@ class TicketAdminController extends Controller
             'type' => 'status',
             'message' => 'Status tiket diubah dari ' . ucfirst($old) . ' ke ' . ucfirst($ticket->status),
         ]);
+
+        // Email reporter (hide button)
+        try {
+            if (!empty($ticket->email)) {
+                \Illuminate\Support\Facades\Mail::send('emails.ticket', [
+                    'kind'          => 'status_changed',
+                    'ticket_no'     => $ticket->ticket_no,
+                    'title'         => $ticket->title,
+                    'reporter_name' => $ticket->reporter_name,
+                    'old_status'    => $old ?? null,
+                    'new_status'    => $ticket->status,
+                    'status'        => $ticket->status,
+                    'actionText'    => 'Lihat Tiket',
+                    'actionUrl'     => '', // hide button for reporter
+                ], function ($m) use ($ticket) {
+                    $m->to($ticket->email)->subject('[' . config('app.name') . '] Status Diubah: ' . $ticket->ticket_no);
+                });
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('mail_status_failed', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
+        }
 
         return redirect()
             ->route('admin.tickets.show', $ticket->id)

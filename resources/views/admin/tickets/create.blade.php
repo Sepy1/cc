@@ -5,7 +5,7 @@
 @endsection
 
 @section('content')
-<div class="max-w-3xl mx-auto bg-white p-6 rounded shadow">
+<div class="mt-16 max-w-3xl mx-auto bg-white p-6 rounded shadow">
     <form action="{{ route('admin.tickets.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
 
@@ -30,10 +30,17 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-                <label class="block text-sm text-gray-700 mb-1">Kategori</label>
-                <input type="text" name="category" value="{{ old('category') }}" class="w-full border rounded-md p-2 text-sm">
-                @error('category') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
-            </div>
+    <label class="block text-sm text-gray-700 mb-1">Pokok Aduan</label>
+    <select name="category" class="w-full border rounded-md p-2 text-sm">
+        <option value="">- Pilih Pokok Aduan -</option>
+        <option value="Tabungan"   {{ old('category')=='Tabungan' ? 'selected' : '' }}>Tabungan</option>
+        <option value="Kredit"     {{ old('category')=='Kredit' ? 'selected' : '' }}>Kredit</option>
+        <option value="Deposito"   {{ old('category')=='Deposito' ? 'selected' : '' }}>Deposito</option>
+        <option value="Informasi"  {{ old('category')=='Informasi' ? 'selected' : '' }}>Informasi</option>
+        <option value="Lainnya"    {{ old('category')=='Lainnya' ? 'selected' : '' }}>Lainnya</option>
+    </select>
+    @error('category') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
+</div>
             <div>
                 <label class="block text-sm text-gray-700 mb-1">Tipe Pelapor</label>
                 <select name="reporter_type" class="w-full border rounded-md p-2 text-sm">
