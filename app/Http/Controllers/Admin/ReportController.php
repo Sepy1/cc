@@ -50,7 +50,7 @@ class ReportController extends Controller
     // total tiket pada periode (atau semua jika 'all')
     $totalTickets = (clone $baseQuery)->count();
 
-    // hitung per status (open/progress/resolved/closed/rejected)
+    // hitung per status (open/pending/resolved/closed/rejected)
     $statusCounts = (clone $baseQuery)
         ->select('status', DB::raw('count(*) as count'))
         ->groupBy('status')
@@ -58,7 +58,7 @@ class ReportController extends Controller
         ->toArray();
 
     $openCount     = $statusCounts['open'] ?? 0;
-    $progressCount  = $statusCounts['progress'] ?? 0;
+    $pendingCount  = $statusCounts['pending'] ?? 0;
     $resolvedCount = $statusCounts['resolved'] ?? 0;
     $closedCount   = $statusCounts['closed'] ?? 0;
     $rejectedCount = $statusCounts['rejected'] ?? 0;
@@ -69,7 +69,7 @@ class ReportController extends Controller
     // Siapkan ticketsByStatus untuk chart
     $ticketsByStatus = [
         'open'     => $openCount,
-        'progress'  => $progressCount,
+        'pending'  => $pendingCount,
         'resolved' => $resolvedCount,
         'closed'   => $closedCount,
     ];
@@ -140,7 +140,7 @@ class ReportController extends Controller
     // statusList untuk view (untuk menghindari array literal di blade)
     $statusList = [
         'Open'     => $openCount,
-        'Progress' => $progressCount,
+        'Pending' => $pendingCount,
         'Resolved' => $resolvedCount,
         'Closed'   => $closedCount,
     ];
@@ -152,7 +152,7 @@ class ReportController extends Controller
         'ticketsByStatus',
         'ticketsByDay',
         'openCount',
-        'progressCount',
+        'pendingCount',
         'resolvedCount',
         'closedCount',
         'rejectedCount',

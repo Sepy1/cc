@@ -124,54 +124,77 @@
         </form>
     </div>
 
+    {{-- =======================
+         Card grid for tickets
+         ======================= --}}
     @if($tickets->count())
-    <div class="bg-white border rounded-lg shadow-sm overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">No Tiket</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Judul</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Pelapor</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Dibuat</th>
-                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Aksi</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                @foreach($tickets as $t)
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            @foreach($tickets as $t)
                 @php
                     $type = strtolower($t->reporter_type ?? ($t->is_nasabah ? 'nasabah' : 'umum'));
                     $typeBadge = $typeColors[$type] ?? $typeColors['umum'];
+                    $statusKey = strtolower($t->status ?? 'unknown');
+                    $badgeClass = $statusColors[$statusKey] ?? 'bg-gray-100 text-gray-700';
                 @endphp
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900">
-                        <a href="{{ route('officer.tickets.show', $t->id) }}" class="text-indigo-600 hover:underline">{{ $t->ticket_no }}</a>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-800">{{ \Illuminate\Support\Str::limit($t->title,60) }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">
-                        <div class="flex items-center gap-2">
-                            <span>{{ $t->reporter_name }}</span>
-                            <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded {{ $typeBadge }}">
-                                {{ $type === 'nasabah' ? 'Nasabah' : 'Umum' }}
-                            </span>
-                        </div>
-                        <div class="text-xs text-gray-400">{{ $t->email ?? '-' }}</div>
-                    </td>
-                    <td class="px-4 py-3">
-                        @php $badgeClass = $statusColors[strtolower($t->status ?? 'unknown')] ?? 'bg-gray-100 text-gray-700'; @endphp
-                        <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded {{ $badgeClass }}">{{ ucfirst($t->status ?? 'Unknown') }}</span>
-                    </td>
-                    <td class="px-4 py-3 text-sm text-gray-500">{{ $t->created_at?->diffForHumans() ?? '-' }}</td>
-                    <td class="px-4 py-3 text-right text-sm">
-                        <a href="{{ route('officer.tickets.show', $t->id) }}" class="text-indigo-600 hover:underline">Lihat</a>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
 
-    <div class="mt-6">{{ $tickets->withQueryString()->links() }}</div>
+                <article class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-300 ease-out hover:-translate-y-1">
+                    <div class="px-5 py-5">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1 pr-3">
+                                <a href="{{ route('officer.tickets.show', $t->id) }}" class="text-sm font-semibold text-indigo-600 hover:underline">
+                                    {{ $t->ticket_no }}
+                                </a>
+                                <div class="mt-1 text-lg font-semibold text-gray-900 leading-snug">
+                                    {{ \Illuminate\Support\Str::limit($t->title, 80) }}
+                                </div>
+                            </div>
+
+                            <div class="text-right flex-shrink-0">
+                                <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full {{ $badgeClass }}">
+                                    {{ ucfirst($t->status ?? 'Unknown') }}
+                                </span>
+                                <div class="mt-2 text-xs text-gray-400">
+                                    {{ $t->created_at?->diffForHumans() ?? '-' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex items-start justify-between">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <div class="text-sm font-medium text-gray-800">
+                                        {{ $t->reporter_name }}
+                                    </div>
+                                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full {{ $typeBadge }}">
+                                        {{ $type === 'nasabah' ? 'Nasabah' : 'Umum' }}
+                                    </span>
+                                </div>
+                                <div class="text-xs text-gray-400 mt-1">{{ $t->email ?? '-' }}</div>
+                                @if(!empty($t->detail))
+                                    <div class="mt-3 text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                                        {{ \Illuminate\Support\Str::limit($t->detail, 200) }}
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="flex flex-col items-end gap-3 ml-4">
+                                <a href="{{ route('officer.tickets.show', $t->id) }}" class="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg shadow hover:bg-indigo-700 hover:shadow-md transition">
+                                    Lihat
+                                </a>
+
+                                {{-- quick meta (optional) --}}
+                                {{-- <div class="text-xs text-gray-400">#label</div> --}}
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            @endforeach
+        </div>
+
+        {{-- Pagination --}}
+        <div class="mt-6">
+            {{ $tickets->withQueryString()->links() }}
+        </div>
     @else
         <div class="bg-white border rounded-lg p-8 text-center">
             <h3 class="text-lg font-medium text-gray-900">Belum ada tiket</h3>
@@ -188,25 +211,41 @@
     const closeBtn = document.getElementById('notifCloseOfficer');
     const badge = bell?.querySelector('span');
     const csrf = '{{ csrf_token() }}';
+    let hasMarkedSeen = false;
 
     function togglePanel() {
         if (!panel) return;
         panel.classList.toggle('hidden');
+        // Do NOT mark seen on open; keep badge/count and card colors unchanged while panel is open
+    }
+
+    function markSeen() {
+        if (hasMarkedSeen) return;
+        hasMarkedSeen = true;
+        fetch('{{ route('officer.notifications.seen') }}', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(() => { if (badge) badge.style.display = 'none'; }).catch(()=>{ hasMarkedSeen = false; });
+    }
+
+    function hidePanel() {
+        if (!panel) return;
         if (!panel.classList.contains('hidden')) {
-            fetch('{{ route('officer.notifications.seen') }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' }
-            }).then(() => { if (badge) badge.style.display = 'none'; }).catch(()=>{});
+            panel.classList.add('hidden');
+            // Mark as seen ONLY after the user closes the panel
+            markSeen();
         }
     }
+
     function hidePanelOnOutside(e) {
         if (!panel || panel.classList.contains('hidden')) return;
         if (!panel.contains(e.target) && !bell.contains(e.target)) {
-            panel.classList.add('hidden');
+            hidePanel();
         }
     }
+
     bell?.addEventListener('click', togglePanel);
-    closeBtn?.addEventListener('click', () => panel.classList.add('hidden'));
+    closeBtn?.addEventListener('click', hidePanel);
     document.addEventListener('click', hidePanelOnOutside);
 })();
 </script>

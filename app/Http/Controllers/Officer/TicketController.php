@@ -90,11 +90,13 @@ class TicketController extends Controller
 
     public function show(Ticket $ticket)
     {
-        if ((int)$ticket->assigned_to !== (int)Auth::id()) {
+        if ((int)$ticket->assigned_to !== (int)\Illuminate\Support\Facades\Auth::id()) {
             abort(403, 'Unauthorized');
         }
 
+        // Eager-load relasi seperti semula
         $ticket->loadMissing(['replies.user', 'events.user', 'assignedTo']);
+
         return view('officer.tickets.show', compact('ticket'));
     }
 
@@ -203,14 +205,14 @@ class TicketController extends Controller
             return redirect()->back()->with('error', 'Gagal menyimpan status: ' . $e->getMessage());
         }
 
-        // flash notif status (officer)
-        session()->flash('notif', [
-            'type' => 'status',
-            'message' => 'Status tiket diubah dari ' . ucfirst($old) . ' ke ' . ucfirst($ticket->status),
-        ]);
+        // Kirim notif sebagai flash (satu sumber)
+return redirect()->route('officer.tickets.show', $ticket->id)
+    ->with('notif', [
+        'type' => 'status',
+        'message' => 'Status tiket diubah dari ' . ucfirst($old) . ' ke ' . ucfirst($ticket->status),
+    ])
+    ->with('success', 'Status tiket diubah menjadi "' . ucfirst($request->status) . '"');
 
-        return redirect()->route('officer.tickets.show', $ticket->id)
-                         ->with('success', 'Status tiket diubah menjadi "' . ucfirst($request->status) . '"');
     }
 
     // Balasan officer (simpan ke DB)
@@ -268,12 +270,10 @@ class TicketController extends Controller
         }
 
         // flash notif reply (officer)
-        session()->flash('notif', [
-            'type' => 'reply',
-            'message' => 'Komentar baru dikirim ke tiket #' . $ticket->ticket_no,
-        ]);
-
-        return back()->with('status', 'Balasan terkirim.');
+        return back()->with('notif', [
+    'type' => 'reply',
+    'message' => 'Balasan terkirim ke tiket #' . $ticket->ticket_no,
+]);
     }
 
     public function showProfile()

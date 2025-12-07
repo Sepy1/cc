@@ -159,100 +159,105 @@
     </div>
 
    {{-- LIST TIKET (TABLE STYLE) --}}
+{{-- LIST TIKET (CARD GRID) --}}
 @if($tickets->count())
-
-<div class="overflow-x-auto bg-white border rounded-lg shadow-sm">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">No Tiket</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Judul</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reporter</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Dibuat</th>
-                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
-            </tr>
-        </thead>
-
-        <tbody class="bg-white divide-y divide-gray-200">
-            @foreach($tickets as $t)
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        @foreach($tickets as $t)
             @php
                 $type = strtolower($t->reporter_type ?? ($t->is_nasabah ? 'nasabah' : 'umum'));
                 $typeBadge = $typeColors[$type] ?? $typeColors['umum'];
+                $statusKey = strtolower($t->status ?? 'unknown');
+                $badgeClass = $statusColors[$statusKey] ?? 'bg-gray-100 text-gray-700';
             @endphp
-            <tr class="hover:bg-gray-50 transition">
-                {{-- Ticket Number --}}
-                <td class="px-4 py-3 text-sm font-medium text-gray-900">
-                    <a href="{{ route('admin.tickets.show', $t->id) }}" class="text-indigo-600 hover:underline">
-                        {{ $t->ticket_no }}
-                    </a>
-                </td>
 
-                {{-- Title --}}
-                <td class="px-4 py-3 text-sm text-gray-800">
-                    {{ \Illuminate\Support\Str::limit($t->title, 60) }}
-                </td>
+            <article class="
+                bg-white border border-gray-200 
+                rounded-2xl shadow-sm 
+                hover:shadow-lg hover:border-gray-300 
+                transition-all duration-300 ease-out 
+                hover:-translate-y-1
+            ">
+                <div class="px-5 py-5">
 
-                {{-- Reporter --}}
-                <td class="px-4 py-3 text-sm text-gray-700">
-                    <div class="flex items-center gap-2">
-                        <span>{{ $t->reporter_name }}</span>
-                        <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded {{ $typeBadge }}">
-                            {{ $type === 'nasabah' ? 'Nasabah' : 'Umum' }}
-                        </span>
+                    {{-- Header No Tiket + Status --}}
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <a href="{{ route('admin.tickets.show', $t->id) }}"
+                                class="text-sm font-semibold text-indigo-600 hover:underline">
+                                {{ $t->ticket_no }}
+                            </a>
+
+                            <div class="mt-1 text-lg font-semibold text-gray-900 leading-snug">
+                                {{ \Illuminate\Support\Str::limit($t->title, 80) }}
+                            </div>
+                        </div>
+
+                        <div class="text-right">
+                            <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full {{ $badgeClass }}">
+                                {{ ucfirst($t->status) }}
+                            </span>
+                            <div class="mt-2 text-xs text-gray-400">
+                                {{ $t->created_at?->diffForHumans() }}
+                            </div>
+                        </div>
                     </div>
-                    <div class="text-xs text-gray-400">{{ $t->email ?? '-' }}</div>
-                </td>
 
-                {{-- Status --}}
-                <td class="px-4 py-3">
-                    @php
-                        $statusKey = strtolower($t->status ?? 'unknown');
-                        $badgeClass = $statusColors[$statusKey] ?? 'bg-gray-100 text-gray-700';
-                    @endphp
-                    <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded {{ $badgeClass }}">
-                        {{ ucfirst($t->status ?? 'Unknown') }}
-                    </span>
-                </td>
+                    {{-- Reporter --}}
+                    <div class="mt-4">
+                        <div class="flex items-center gap-2">
+                            <div class="text-sm font-medium text-gray-800">
+                                {{ $t->reporter_name }}
+                            </div>
+                            <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full {{ $typeBadge }}">
+                                {{ $type === 'nasabah' ? 'Nasabah' : 'Umum' }}
+                            </span>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-1">
+                            {{ $t->email ?? '-' }}
+                        </div>
+                    </div>
 
-                {{-- Created at --}}
-                <td class="px-4 py-3 text-sm text-gray-500">
-                    {{ $t->created_at?->diffForHumans() ?? '-' }}
-                </td>
+                    {{-- Detail preview --}}
+                    @if(!empty($t->detail))
+                        <div class="mt-4 text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                            {{ \Illuminate\Support\Str::limit($t->detail, 200) }}
+                        </div>
+                    @endif
 
-                {{-- Actions --}}
-                <td class="px-4 py-3 text-right text-sm flex items-center gap-3 justify-end">
-                    <a href="{{ route('admin.tickets.show', $t->id) }}" class="text-indigo-600 hover:underline">Lihat</a>
+                    {{-- Actions --}}
+                    <div class="mt-5 flex justify-end">
+                        <a href="{{ route('admin.tickets.show', $t->id) }}"
+                            class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg shadow hover:bg-indigo-700 hover:shadow-md transition">
+                            Lihat
+                        </a>
+                    </div>
 
-                   
-                    </a>
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-</div>
+                </div>
+            </article>
 
-{{-- Pagination --}}
-<div class="mt-6">
-    {{ $tickets->withQueryString()->links() }}
-</div>
-
+        @endforeach
+    </div>
 @else
     {{-- Empty state --}}
-    <div class="bg-white border rounded-lg p-8 text-center">
+    <div class="bg-white border rounded-lg p-8 text-center shadow-sm">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6M9 16h6M7 8h10M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
         </svg>
         <h3 class="mt-4 text-lg font-medium text-gray-900">Belum ada tiket</h3>
         <p class="mt-2 text-sm text-gray-500">Silakan buat tiket baru.</p>
         <div class="mt-4">
-            <a href="{{ route('admin.tickets.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700">
+            <a href="{{ route('admin.tickets.create') }}"
+                class="px-4 py-2 bg-indigo-600 text-white rounded-md shadow hover:bg-indigo-700 transition">
                 Buat Tiket Baru
             </a>
         </div>
     </div>
 @endif
+
+{{-- Pagination --}}
+<div class="mt-6">
+    {{ $tickets->withQueryString()->links() }}
+</div>
 </div>
 
 {{-- Simple JS untuk toggle edit mode --}}

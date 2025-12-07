@@ -42,7 +42,7 @@
                 <img src="data:image/png;base64{{ ':' . $logoData }}" alt="Logo">
             @endif
             <div>
-                <div>PT BPR BKK JAWA TENGAH (Perseroda)</div>
+                <div>PT BPR BKK JATENG (Perseroda)</div>
                 <div class="muted">Laporan Bulanan Call Center</div>
             </div>
         </div>
@@ -58,7 +58,7 @@
                 <th style="width:30px">No</th>
                 <th class="nowrap" style="width:85px">Tanggal</th>
                 <th>Nama Pelapor</th>
-                <th>Jenis Aduan</th>
+                <th>Pokok Aduan</th>
                 <th>Unit Terkait</th>
                 <th style="width:120px">Status Penyelesaian</th>
                 <th>Keterangan</th>
@@ -121,17 +121,20 @@
         <div class="sign">
             <div>Dibuat</div>
             <div class="space"></div>
-            <div class="small"><u>CSA</u></div>
+            <div class="space"></div>
+            <div class="small"><u>AJI APRIAN FIRMANSYAH, SE</u><br>CSA</br></div>
         </div>
         <div class="sign">
             <div>Diperiksa</div>
             <div class="space"></div>
-            <div class="small"><u>Kepala Bidang Sekretaris</u><br>Perusahaan &amp; Humas</div>
+            <div class="space"></div>
+            <div class="small"><u>PUTRI SABATI DAMARISTI, SE</u><br>KEPALA BIDANG SEKRETARIS PERUSAHAAN DAN HUMAS</div>
         </div>
         <div class="sign">
             <div>Disetujui</div>
             <div class="space"></div>
-            <div class="small"><u>Sekretaris Perusahaan</u></div>
+            <div class="space"></div>
+            <div class="small"><u>FANDY FARISSA, SH., MK.N</u><br>SEKRETARIS PERUSAHAAN</div>
         </div>
     </div>
 </body>

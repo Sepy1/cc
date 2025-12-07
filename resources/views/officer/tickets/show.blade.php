@@ -1,6 +1,25 @@
 @extends('layouts.app')
 
 @section('content')
+{{-- Spinner overlay (shows during full page load) --}}
+<div id="pageLoadingOverlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-white">
+    <div class="animate-spin w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
+</div>
+
+{{-- Prevent scroll while loading --}}
+<script>
+    // Immediately block scrolling before content renders
+    document.documentElement.style.overflow = 'hidden';
+    document.body && (document.body.style.overflow = 'hidden');
+    // Hide spinner only after window load (all resources)
+    window.addEventListener('load', function () {
+        var overlay = document.getElementById('pageLoadingOverlay');
+        if (overlay) overlay.style.display = 'none';
+        document.documentElement.style.overflow = '';
+        document.body && (document.body.style.overflow = '');
+    });
+</script>
+
 @php
     $statusColors = [
         'open'     => 'bg-green-100 text-green-800',
@@ -112,18 +131,18 @@
 </div>
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    @if(session('notif'))
-        @php $n = session('notif'); @endphp
-        <div class="mb-4">
-            <div class="inline-flex items-center px-3 py-2 rounded-md text-sm
-                {{ ($n['type'] ?? '') === 'status' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700' }}">
-                <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 005 15h14a1 1 0 00.707-1.707L18 11.586V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/>
-                </svg>
-                {{ $n['message'] ?? 'Perubahan tersimpan.' }}
-            </div>
+    @php $n = session()->pull('notif'); @endphp
+@if($n)
+    <div class="mb-4">
+        <div class="inline-flex items-center px-3 py-2 rounded-md text-sm
+            {{ ($n['type'] ?? '') === 'status' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700' }}">
+            <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 005 15h14a1 1 0 00.707-1.707L18 11.586V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/>
+            </svg>
+            {{ $n['message'] ?? 'Perubahan tersimpan.' }}
         </div>
-    @endif
+    </div>
+@endif
 
     {{-- Breadcrumb --}}
     <nav class="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
@@ -155,13 +174,7 @@
                             @if($ticket->email)
                                 • <a href="mailto:{{ $ticket->email }}" class="text-indigo-600 hover:underline text-sm">{{ $ticket->email }}</a>
                             @endif
-                            @if($waNumber)
-                                • <a
-                                    href="https://wa.me/{{ $waNumber }}?text={{ urlencode('Halo, kami dari Support menanggapi tiket #' . ($ticket->ticket_no ?? '')) }}"
-                                    target="_blank"
-                                    class="text-green-600 hover:underline text-sm"
-                                >WhatsApp</a>
-                            @endif
+                          
                         </p>
                     </div>
 
@@ -471,7 +484,6 @@
                             @php
                                 $typeLabel = ucfirst(str_replace('_', ' ', $ev->type));
                                 $actor = $ev->user?->name ?? 'Sistem';
-                                // meta bisa berupa array, json string, atau null
                                 $meta = is_array($ev->meta)
                                     ? $ev->meta
                                     : (is_string($ev->meta) ? (json_decode($ev->meta, true) ?: []) : []);
@@ -489,20 +501,16 @@
                                     {{-- Detail meta --}}
                                     @if(!empty($meta))
                                         <div class="mt-2 text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-md p-3 space-y-2">
-                                            {{-- Prefer from/to jika ada --}}
                                             @if(isset($meta['from']) || isset($meta['to']))
                                                 <div><strong>Status tiket diubah:</strong>
-                                                    
                                                     menjadi <span class="font-medium">{{ $meta['to'] ?? '-' }}</span>
                                                 </div>
-                                            {{-- Jika hanya ada "status" lama, render sebagai to --}}
                                             @elseif(isset($meta['status']))
                                                 <div>Status tiket diubah
                                                    menjadi <span class="font-medium">{{ $meta['status'] }}</span>
-                                                </div>  
+                                                </div>
                                             @endif
 
-                                            {{-- Changes umum --}}
                                             @if(isset($meta['changes']) && is_array($meta['changes']))
                                                 @foreach($meta['changes'] as $field => $change)
                                                     @php
@@ -512,7 +520,6 @@
                                                     @endphp
                                                     @if(strtolower($field) === 'status')
                                                         <div>Status tiket diubah
-                                                            
                                                             menjadi <span class="font-medium">{{ $to }}</span>
                                                         </div>
                                                     @else
@@ -523,7 +530,6 @@
                                                 @endforeach
                                             @endif
 
-                                            {{-- Fallback: tampilkan meta lain yang dikenal --}}
                                             @if(isset($meta['assigned_to_name']) || isset($meta['assigned_to']))
                                                 <div><strong>Assigned ke:</strong> <span class="font-medium">{{ $meta['assigned_to_name'] ?? ('User #' . ($meta['assigned_to'] ?? '-')) }}</span></div>
                                             @endif
@@ -583,7 +589,7 @@
     clearBtn?.addEventListener('click', function () { if (fileInput) { fileInput.value = ''; updateName(); } });
     updateName();
 
-    // History modal handlers (jika ada)
+    // History modal handlers
     const openHistoryButtons = document.querySelectorAll('.open-history');
     const historyRoot = document.getElementById('historyModal');
     const historyPanel = document.getElementById('historyModalPanel');
@@ -618,27 +624,46 @@
     historyCloseBtn?.addEventListener('click', closeHistoryModal);
     historyCloseFooterBtn?.addEventListener('click', closeHistoryModal);
 
+    // Notif panel (officer)
     const bell = document.getElementById('notifBellOfficerShow');
     const panel = document.getElementById('notifPanelOfficerShow');
     const closeBtn = document.getElementById('notifCloseOfficerShow');
     const badge = bell?.querySelector('span');
     const csrf = '{{ csrf_token() }}';
+    let hasMarkedSeen = false;
 
     function togglePanel() {
         panel?.classList.toggle('hidden');
+        // Do NOT mark seen on open; keep badge/count and card colors unchanged while panel is open
+    }
+
+    function markSeen() {
+        if (hasMarkedSeen) return;
+        hasMarkedSeen = true;
+        fetch('{{ route('officer.notifications.seen') }}', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(() => { if (badge) badge.style.display = 'none'; }).catch(()=>{ hasMarkedSeen = false; });
+    }
+
+    function hidePanel() {
+        if (!panel) return;
         if (!panel.classList.contains('hidden')) {
-            fetch('{{ route('officer.notifications.seen') }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' }
-            }).then(() => { if (badge) badge.style.display = 'none'; }).catch(()=>{});
+            panel.classList.add('hidden');
+            // Mark as seen ONLY after the user closes the panel
+            markSeen();
         }
     }
+
     function hidePanelOnOutside(e) {
         if (!panel || panel.classList.contains('hidden')) return;
-        if (!panel.contains(e.target) && !bell.contains(e.target)) panel.classList.add('hidden');
+        if (!panel.contains(e.target) && !bell.contains(e.target)) {
+            hidePanel();
+        }
     }
+
     bell?.addEventListener('click', togglePanel);
-    closeBtn?.addEventListener('click', () => panel.classList.add('hidden'));
+    closeBtn?.addEventListener('click', hidePanel);
     document.addEventListener('click', hidePanelOnOutside);
 })();
 </script>

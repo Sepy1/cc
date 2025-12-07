@@ -66,8 +66,8 @@
           <div class="text-lg font-semibold text-green-700">{{ $openCount }}</div>
         </div>
         <div class="p-3 bg-yellow-50 rounded-lg">
-          <div class="text-xs text-gray-600">Progress</div>
-          <div class="text-lg font-semibold text-yellow-700">{{ $progressCount }}</div>
+          <div class="text-xs text-gray-600">Pending</div>
+          <div class="text-lg font-semibold text-yellow-700">{{ $pendingCount }}</div>
         </div>
         <div class="p-3 bg-blue-50 rounded-lg">
           <div class="text-xs text-gray-600">Resolved</div>
@@ -151,7 +151,7 @@
                 @php
                   $statusColors = [
                     'open' => 'bg-green-50 text-green-700',
-                    'progress' => 'bg-yellow-50 text-yellow-700',
+                    'pending' => 'bg-yellow-50 text-yellow-700',
                     'resolved' => 'bg-blue-50 text-blue-700',
                     'closed' => 'bg-gray-100 text-gray-700',
                     'rejected' => 'bg-red-50 text-red-700',
