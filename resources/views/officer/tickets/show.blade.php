@@ -1,25 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-{{-- Spinner overlay (shows during full page load) --}}
-<div id="pageLoadingOverlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-white">
-    <div class="animate-spin w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
-</div>
-
-{{-- Prevent scroll while loading --}}
-<script>
-    // Immediately block scrolling before content renders
-    document.documentElement.style.overflow = 'hidden';
-    document.body && (document.body.style.overflow = 'hidden');
-    // Hide spinner only after window load (all resources)
-    window.addEventListener('load', function () {
-        var overlay = document.getElementById('pageLoadingOverlay');
-        if (overlay) overlay.style.display = 'none';
-        document.documentElement.style.overflow = '';
-        document.body && (document.body.style.overflow = '');
-    });
-</script>
-
 @php
     $statusColors = [
         'open'     => 'bg-green-100 text-green-800',
@@ -28,8 +9,6 @@
         'resolved' => 'bg-blue-100 text-blue-800',
         'rejected' => 'bg-red-100 text-red-800',
     ];
-
-    // Reporter type (special: nasabah)
     $reporterTypeColors = [
         'nasabah' => 'bg-emerald-100 text-emerald-800',
         'umum'    => 'bg-gray-100 text-gray-700',
@@ -37,52 +16,13 @@
     $reporterType = strtolower($ticket->reporter_type ?? (($ticket->is_nasabah ?? false) ? 'nasabah' : 'umum'));
     $repBadgeClass = $reporterTypeColors[$reporterType ?: 'umum'] ?? $reporterTypeColors['umum'];
 
-    /*
-     Prepare phone for WhatsApp:
-      - remove non-digits
-      - change leading 0 => 62
-    */
-    $rawPhone = $ticket->phone ?? '';
-    $onlyDigits = preg_replace('/\D/', '', $rawPhone);
-    $waNumber = $onlyDigits ? preg_replace('/^0/', '62', $onlyDigits) : '';
-
-    // Notifikasi khusus officer: berdasarkan tiket yang di-assign kepada officer
-    $me = auth()->id();
-    $seenAt = session('notif_seen_at_officer');
-    $myTicketIds = \App\Models\Ticket::where('assigned_to', auth()->id())->pluck('id');
-
-    $base = \App\Models\TicketEvent::with(['user','ticket'])
-        ->whereIn('type', ['status_changed','replied','assigned'])
-        ->whereIn('ticket_id', $myTicketIds)
-        ->orderBy('created_at','desc');
-
-    $unreadQuery = $seenAt
-        ? (clone $base)->where('created_at', '>', $seenAt)
-        : (clone $base)->where('created_at', '>=', now()->subDay());
-    $readQuery = $seenAt
-        ? (clone $base)->where('created_at', '<=', $seenAt)->where('created_at', '>=', now()->subDay())
-        : collect();
-
-    $notifCount = (clone $unreadQuery)->count();
-    $unread = (clone $unreadQuery)->take(20)->get();
-    $read   = $readQuery instanceof \Illuminate\Support\Collection ? collect() : (clone $readQuery)->take(20)->get();
+    // WhatsApp normalization (match admin pattern)
+    $rawPhone = preg_replace('/\D/', '', $ticket->phone ?? '');
+    $waNumber = (strlen($rawPhone) > 3 && substr($rawPhone, 0, 1) === '0') ? ('62' . substr($rawPhone, 1)) : $rawPhone;
 @endphp
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    @php $n = session()->pull('notif'); @endphp
-@if($n)
-    <div class="mb-4">
-        <div class="inline-flex items-center px-3 py-2 rounded-md text-sm
-            {{ ($n['type'] ?? '') === 'status' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700' }}">
-            <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 005 15h14a1 1 0 00.707-1.707L18 11.586V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/>
-            </svg>
-            {{ $n['message'] ?? 'Perubahan tersimpan.' }}
-        </div>
-    </div>
-@endif
-
-    {{-- Breadcrumb --}}
+    {{-- Breadcrumb (match admin) --}}
     <nav class="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
         <ol class="flex items-center gap-2">
             <li><a href="{{ route('officer.tickets.index') }}" class="hover:underline">Tiket Saya</a></li>
@@ -91,7 +31,7 @@
         </ol>
     </nav>
 
-    {{-- Card container --}}
+    {{-- Card container (match admin) --}}
     <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
             {{-- Main content --}}
@@ -104,15 +44,12 @@
                         </h1>
                         <p class="mt-1 text-sm text-gray-500">
                             Dilaporkan oleh <span class="font-medium text-gray-700">{{ $ticket->reporter_name }}</span>
-                            @if($reporterType === 'nasabah')
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ $repBadgeClass }}">
-                                    Nasabah
-                                </span>
-                            @endif
                             @if($ticket->email)
                                 • <a href="mailto:{{ $ticket->email }}" class="text-indigo-600 hover:underline text-sm">{{ $ticket->email }}</a>
                             @endif
-                          
+                            @if($reporterType === 'nasabah')
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {{ $repBadgeClass }}">Nasabah</span>
+                            @endif
                         </p>
                     </div>
 
@@ -125,144 +62,45 @@
                             {{ ucfirst($ticket->status ?? 'Unknown') }}
                         </span>
 
-                        <a href="#" class="open-history inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                           title="Lihat riwayat tiket">
+                        <a href="#" class="open-history inline-flex items-center px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50" title="Lihat riwayat tiket">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             Riwayat
                         </a>
                     </div>
                 </div>
 
-                {{-- Detail --}}
+                {{-- Detail box --}}
                 <div class="bg-gray-50 border border-gray-100 rounded-lg p-4">
                     <h3 class="text-sm font-medium text-gray-700 mb-2">Detail masalah</h3>
                     <p class="text-sm text-gray-800 whitespace-pre-line">{{ $ticket->detail ?? '-' }}</p>
                 </div>
 
-                {{-- Metadata row --}}
+                {{-- Metadata row (match admin) --}}
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="p-3 bg-white border border-gray-100 rounded-lg">
                         <div class="text-xs text-gray-500">Kategori</div>
                         <div class="mt-1 text-sm text-gray-800">{{ $ticket->category ?? '-' }}</div>
                     </div>
-                    
+                    <div class="p-3 bg-white border border-gray-100 rounded-lg">
+                        <div class="text-xs text-gray-500">Kontak</div>
+                        <div class="mt-1 flex items-center gap-2">
+                            <span class="text-sm text-gray-800">{{ $ticket->phone ?? '-' }}</span>
+                            @if($ticket->phone)
+                                <a href="https://wa.me/{{ $waNumber }}" target="_blank" class="text-green-600 hover:text-green-700" title="Chat via WhatsApp">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="w-5 h-5 fill-current"><path d="M16.002 3.2c-7.062 0-12.8 5.738-12.8 12.8 0 2.262.593 4.469 1.721 6.414L3.2 28.8l6.595-1.689a12.744 12.744 0 0 0 6.207 1.59h.001c7.062 0 12.799-5.738 12.799-12.8s-5.737-12.8-12.8-12.8zm0 23.01h-.001a10.17 10.17 0 0 1-5.186-1.42l-.372-.221-3.916 1.002 1.045-3.826-.243-.393A10.132 10.132 0 0 1 5.6 16c0-5.75 4.652-10.4 10.402-10.4 5.75 0 10.4 4.65 10.4 10.4 0 5.75-4.65 10.4-10.4 10.4zm5.645-7.626c-.308-.154-1.82-.898-2.103-1-.282-.103-.487-.154-.692.154-.205.308-.794 1-.973 1.205-.18.205-.359.231-.667.077-.308-.154-1.302-.48-2.48-1.53-.917-.817-1.536-1.828-1.716-2.136-.18-.308-.019-.474.135-.628.139-.138.308-.359.462-.539.154-.18.205-.308.308-.513.103-.205.051-.385-.026-.539-.077-.154-.692-1.667-.948-2.288-.249-.597-.503-.516-.692-.526-.18-.01-.385-.01-.59-.01a1.14 1.14 0 0 0-.821.385c-.282.308-1.079 1.054-1.079 2.57 0 1.515 1.105 2.974 1.259 3.179.154.205 2.178 3.326 5.284 4.66.738.318 1.313.507 1.762.648.74.236 1.414.203 1.948.123.594-.088 1.82-.744 2.078-1.462.257-.718.257-1.333.18-1.462-.077-.128-.282-.205-.59-.359z"/></svg>
+                                </a>
+                            @endif
+                        </div>
+                    </div>
                     <div class="p-3 bg-white border border-gray-100 rounded-lg">
                         <div class="text-xs text-gray-500">Terakhir diupdate</div>
                         <div class="mt-1 text-sm text-gray-800">{{ $ticket->updated_at?->diffForHumans() ?? '-' }}</div>
                     </div>
-
-                    <div class="p-3 bg-white border border-gray-100 rounded-lg">
-                        <div class="text-xs text-gray-500">Tipe Pelapor</div>
-                        <div class="mt-1 text-sm text-gray-800">
-                            {{ $reporterType === 'nasabah' ? 'Nasabah' : 'Umum' }}
-                        </div>
-                    </div>
                 </div>
 
-                {{-- Informasi Nasabah (opsional) --}}
-                @php
-                    $hasNasabahInfo = filled($ticket->id_ktp)
-                        || filled($ticket->nomor_rekening)
-                        || filled($ticket->nama_ibu)
-                        || filled($ticket->alamat)
-                        || filled($ticket->kode_kantor)
-                        || filled($ticket->media_closing);
-                @endphp
-                @if($hasNasabahInfo)
-                    <div class="bg-white border border-gray-100 rounded-lg">
-                        <div class="px-4 py-3 border-b">
-                            <h3 class="text-sm font-medium text-gray-700">Informasi Nasabah</h3>
-                        </div>
-                        <div class="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            @if(filled($ticket->id_ktp))
-                                <div>
-                                    <div class="text-xs text-gray-500">ID KTP</div>
-                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->id_ktp }}</div>
-                                </div>
-                            @endif
-                            @if(filled($ticket->nomor_rekening))
-                                <div>
-                                    <div class="text-xs text-gray-500">Nomor Rekening</div>
-                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->nomor_rekening }}</div>
-                                </div>
-                            @endif
-                            @if(filled($ticket->nama_ibu))
-                                <div>
-                                    <div class="text-xs text-gray-500">Nama Ibu</div>
-                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->nama_ibu }}</div>
-                                </div>
-                            @endif
-                            @if(filled($ticket->alamat))
-                                <div class="sm:col-span-2">
-                                    <div class="text-xs text-gray-500">Alamat</div>
-                                    <div class="mt-1 text-sm text-gray-800 whitespace-pre-line">{{ $ticket->alamat }}</div>
-                                </div>
-                            @endif
-                            @if(filled($ticket->kode_kantor))
-                                <div>
-                                    <div class="text-xs text-gray-500">Kode Kantor</div>
-                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->kode_kantor }}</div>
-                                </div>
-                            @endif
-                            @if(filled($ticket->media_closing))
-                                <div>
-                                    <div class="text-xs text-gray-500">Media Closing</div>
-                                    <div class="mt-1 text-sm text-gray-800">
-                                        {{-- normalisasi label --}}
-                                        @php
-                                            $mc = strtolower(trim($ticket->media_closing));
-                                            $labels = ['whatsapp' => 'WhatsApp', 'telepon' => 'Telepon', 'offline' => 'Offline'];
-                                            $mediaClosingLabel = $labels[$mc] ?? ucfirst($ticket->media_closing);
-                                        @endphp
-                                        {{ $mediaClosingLabel }}
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Lampiran Tambahan (opsional) --}}
-                @php
-                    $ktpPath = $ticket->attachment_ktp ?? null;
-                    $buktiPath = $ticket->attachment_bukti ?? null;
-                @endphp
-                @if($ktpPath || $buktiPath)
-                    <div class="bg-white border border-gray-100 rounded-lg">
-                        <div class="px-4 py-3 border-b">
-                            <h3 class="text-sm font-medium text-gray-700">Lampiran</h3>
-                        </div>
-                        <div class="px-4 py-4 space-y-3">
-                            @if($ktpPath)
-                                <div class="flex items-center gap-2">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-700">KTP</span>
-                                    <a class="text-sm text-indigo-600 hover:underline" target="_blank" href="{{ asset('storage/' . $ktpPath) }}">
-                                        {{ basename($ktpPath) }}
-                                    </a>
-                                </div>
-                            @endif
-                            @if($buktiPath)
-                                <div class="flex items-center gap-2">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-                                    </svg>
-                                    <span class="text-sm text-gray-700">Bukti</span>
-                                    <a class="text-sm text-indigo-600 hover:underline" target="_blank" href="{{ asset('storage/' . $buktiPath) }}">
-                                        {{ basename($buktiPath) }}
-                                    </a>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Komentar: card + scrollable --}}
+                {{-- Komentar (match admin styles) --}}
                 <div class="bg-white border border-gray-100 rounded-lg">
                     <div class="px-4 py-3 border-b">
                         <h3 class="text-sm font-medium text-gray-700">Komentar</h3>
@@ -284,10 +122,7 @@
                                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
                                         </svg>
-                                        <a class="text-sm text-indigo-600 hover:underline" target="_blank"
-                                           href="{{ asset('storage/' . $reply->attachment) }}">
-                                           {{ basename($reply->attachment) }}
-                                        </a>
+                                        <a class="text-sm text-indigo-600 hover:underline" target="_blank" href="{{ asset('storage/' . $reply->attachment) }}">{{ basename($reply->attachment) }}</a>
                                     </div>
                                 @endif
                             </div>
@@ -297,58 +132,41 @@
                     </div>
                 </div>
 
-                {{-- Reply form --}}
+                {{-- Reply form (keep officer route) --}}
                 <div id="replySection">
-        <form action="{{ route('officer.tickets.reply', $ticket->id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
-            @csrf
-            <label class="sr-only" for="message">Balasan</label>
-            <textarea name="message" id="message" rows="4"
-                class="w-full border border-gray-200 rounded-md p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Tulis balasan (opsional)..."></textarea>
+                    <form action="{{ route('officer.tickets.reply', $ticket->id) }}" method="POST" enctype="multipart/form-data" class="mt-4">
+                        @csrf
+                        <div>
+                            <label for="message" class="block text-sm font-medium text-gray-700 mb-2">Balasan</label>
+                            <textarea name="message" id="message" rows="4" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500" placeholder="Tulis balasan (opsional)"></textarea>
+                            @error('message') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                        </div>
 
-            {{-- Lampiran (opsional) --}}
-            <div class="mt-3">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Lampiran (opsional)</label>
-                <input
-                    type="file"
-                    name="attachment"
-                    id="attachment"
-                    class="hidden"
-                    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.zip">
-
-                {{-- Row: lampiran kiri + kirim kanan --}}
-               <div class="flex items-center gap-3 flex-wrap justify-between">
-                   <div class="flex items-center gap-3 min-w-0">
-                        <label for="attachment"
-                               class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium cursor-pointer hover:bg-indigo-700">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-                            </svg>
-                            Pilih Lampiran
-                        </label>
-                        <span id="attachmentName" class="text-sm text-gray-600 truncate max-w-[40ch]">Belum ada file</span>
-                        <button type="button" id="clearAttachment" class="hidden text-xs text-gray-500 hover:text-gray-700 underline">Bersihkan</button>
-                   </div>
-
-                   <button type="submit"
-                           class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
-                       Kirim Balasan
-                   </button>
+                        <div class="mt-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Lampiran (opsional)</label>
+                            <input type="file" name="attachment" id="attachment" class="hidden" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.zip">
+                            <div class="flex items-center justify-between gap-3 flex-wrap">
+                                <div class="flex items-center gap-3">
+                                    <label for="attachment" class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium cursor-pointer hover:bg-indigo-700">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                        </svg>
+                                        Pilih Lampiran
+                                    </label>
+                                    <span id="attachmentName" class="text-sm text-gray-600 truncate max-w-[40ch]">Belum ada file</span>
+                                    <button type="button" id="clearAttachment" class="hidden text-xs text-gray-500 hover:text-gray-700 underline">Bersihkan</button>
+                                </div>
+                                <button type="submit" class="ml-auto inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Kirim Balasan</button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">Max 5MB. Format: JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, ZIP</p>
+                            @error('attachment') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                        </div>
+                    </form>
                 </div>
-
-                <p class="text-xs text-gray-500 mt-2">Max 5MB. Format: JPG, PNG, PDF, DOC, DOCX, XLS, XLSX, ZIP</p>
-                @error('attachment')
-                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-        </form>
-    </div>
             </div>
 
-            {{-- Sidebar --}}
-             <aside class="space-y-4">
-                {{-- Info kecil --}}
+            {{-- Sidebar actions (officer-specific) --}}
+            <aside class="space-y-4">
                 <div class="p-4 bg-gray-50 border border-gray-100 rounded-lg text-sm text-gray-500">
                     <div><strong>Dibuat</strong></div>
                     <div class="mt-1 text-gray-700">{{ $ticket->created_at?->format('d M Y H:i') ?? '-' }}</div>
@@ -358,41 +176,32 @@
                     <div class="mt-1 text-gray-700">{{ optional($ticket->assignedTo)->name ?? ($ticket->assigned_to ? 'User #' . $ticket->assigned_to : '-') }}</div>
                 </div>
 
-                {{-- Card Aksi Tiket: Riwayat + Update Status --}}
                 <div class="p-4 bg-white border border-gray-100 rounded-lg">
-        <h4 class="text-sm font-medium text-gray-700">Perbarui Status</h4>
-        <form action="{{ route('officer.tickets.update_status', $ticket->id) }}" method="POST" class="mt-3">
-            @csrf
-            <label for="status" class="block text-sm text-gray-600 mb-1">Status</label>
-            <div class="flex items-center gap-2">
-                <div class="relative">
-                    <select name="status" id="status"
-                            class="pl-3 pr-9 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none">
-                        <option value="pending" {{ old('status', $ticket->status) == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="resolved" {{ old('status', $ticket->status) == 'resolved' ? 'selected' : '' }}>Resolved</option>
-                    </select>
-                    <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 011.08 1.04l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-                    </svg>
+                    <h4 class="text-sm font-medium text-gray-700">Perbarui Status</h4>
+                    <form action="{{ route('officer.tickets.update_status', $ticket->id) }}" method="POST" class="mt-3">
+                        @csrf
+                        <label for="status" class="block text-sm text-gray-600 mb-1">Status</label>
+                        <div class="flex items-center gap-2">
+                            <div class="relative">
+                                <select name="status" id="status" class="pl-3 pr-9 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none">
+                                    <option value="pending" {{ old('status', $ticket->status) == 'pending' ? 'selected' : '' }}>Pending</option>
+                                    <option value="resolved" {{ old('status', $ticket->status) == 'resolved' ? 'selected' : '' }}>Resolved</option>
+                                </select>
+                                <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 011.08 1.04l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <button type="submit" class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700">Simpan</button>
+                        </div>
+                        @error('status') <div class="text-xs text-red-600 mt-2">{{ $message }}</div> @enderror
+                    </form>
                 </div>
-                <button type="submit"
-                        class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700">
-                    Simpan
-                </button>
-            </div>
-            @error('status') <div class="text-xs text-red-600 mt-2">{{ $message }}</div> @enderror
-        </form>
-    </div>
-             </aside>
+            </aside>
         </div>
     </div>
 </div>
 
-{{-- Anda bisa mengubah informasi ini di halaman Edit --}}
-{{-- <a href="{{ route('officer.tickets.edit', $ticket) }}" class="text-indigo-600 text-sm underline">Edit tiket</a> --}}
-@endsection
-
-{{-- HISTORY MODAL (timeline) --}}
+{{-- HISTORY MODAL (same behavior as admin) --}}
 <div id="historyModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
     <div id="historyModalOverlay" class="fixed inset-0 bg-black bg-opacity-40 transition-opacity"></div>
 
@@ -564,3 +373,4 @@
 })();
 </script>
 @endpush
+@endsection

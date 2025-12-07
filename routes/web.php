@@ -148,3 +148,26 @@ Route::middleware(['auth'])->post('/notifications/{id}/read', function ($id) {
         ->update(['read_at' => now()]);
     return response()->noContent();
 })->name('notifications.read');
+
+// Notifications: list (auth required) - returns unread/read latest 20
+Route::middleware(['auth'])->get('/notifications/list', function () {
+    $user = Auth::user();
+    $unread = \Illuminate\Support\Facades\DB::table('notifications')
+        ->where('notifiable_id', $user->id)
+        ->whereNull('read_at')
+        ->orderByDesc('created_at')
+        ->limit(20)
+        ->get();
+    $read = \Illuminate\Support\Facades\DB::table('notifications')
+        ->where('notifiable_id', $user->id)
+        ->whereNotNull('read_at')
+        ->orderByDesc('created_at')
+        ->limit(20)
+        ->get();
+
+    return response()->json([
+        'unread' => $unread,
+        'read'   => $read,
+        'count'  => $unread->count(),
+    ]);
+})->name('notifications.list');

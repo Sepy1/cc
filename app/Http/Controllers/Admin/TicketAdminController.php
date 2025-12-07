@@ -254,14 +254,6 @@ class TicketAdminController extends Controller
             return redirect()->back()->with('error', 'Gagal menyimpan tiket: ' . $e->getMessage());
         }
 
-        // flash notif status change (admin)
-        if (isset($data['status']) && $originalStatus !== $ticket->status) {
-            session()->flash('notif', [
-                'type' => 'status',
-                'message' => 'Status tiket diubah dari ' . ucfirst($originalStatus) . ' ke ' . ucfirst($ticket->status),
-            ]);
-        }
-
         // Email reporter (hide button)
         try {
             if (!empty($ticket->email)) {
@@ -336,12 +328,6 @@ class TicketAdminController extends Controller
 
         // update updated_at tiket
         $ticket->touch();
-
-        // flash notif reply (admin)
-        session()->flash('notif', [
-            'type' => 'reply',
-            'message' => 'Komentar baru dikirim ke tiket #' . $ticket->ticket_no,
-        ]);
 
         // Notify assigned officer about new comment
         if ($ticket->assigned_to) {

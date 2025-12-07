@@ -44,30 +44,6 @@
 
             <!-- Right side: Bell + User dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ml-6 gap-4">
-                @php
-                    // Fetch notifications for current user
-                    $user = Auth::user();
-                    $unreadNotifs = collect();
-                    $readNotifs = collect();
-                    if ($user) {
-                        $unreadNotifs = \Illuminate\Support\Facades\DB::table('notifications')
-                            ->where('notifiable_id', $user->id)
-                            ->whereNull('read_at')
-                            ->orderByDesc('created_at')
-                            ->limit(20)
-                            ->get();
-                        $readNotifs = \Illuminate\Support\Facades\DB::table('notifications')
-                            ->where('notifiable_id', $user->id)
-                            ->whereNotNull('read_at')
-                            ->orderByDesc('created_at')
-                            ->limit(20)
-                            ->get();
-                        $notifBadgeCount = $unreadNotifs->count();
-                    } else {
-                        $notifBadgeCount = 0;
-                    }
-                @endphp
-
                 <!-- Bell + Panel wrapper (relative for absolute panel) -->
                 <div class="relative">
                     <!-- Bell -->
@@ -77,11 +53,7 @@
                         <svg class="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2a6 6 0 00-6 6v3.586l-1.707 1.707A1 1 0 005 15h14a1 1 0 00.707-1.707L18 11.586V8a6 6 0 00-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/>
                         </svg>
-                        @if(($notifBadgeCount ?? 0) > 0)
-                            <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white">
-                                {{ $notifBadgeCount }}
-                            </span>
-                        @endif
+                        <span id="topNotifBadge" class="hidden absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white">0</span>
                     </button>
 
                     <!-- Bell panel (absolute, right-aligned under bell) -->
@@ -95,53 +67,9 @@
                                 </svg>
                             </button>
                         </div>
-                        <div class="max-h-80 overflow-y-auto">
-                            @foreach($unreadNotifs as $n)
-                                @php
-                                    $data = is_string($n->data) ? (json_decode($n->data, true) ?: []) : (is_array($n->data) ? $n->data : []);
-                                    $ticketId = $data['ticket_id'] ?? null;
-                                    $message  = $data['message'] ?? ($data['title'] ?? 'Notifikasi');
-                                    $routeUrl = $data['url'] ?? ($ticketId
-                                        ? (Auth::user()?->role === 'admin'
-                                            ? route('admin.tickets.show', $ticketId)
-                                            : route('officer.tickets.show', $ticketId))
-                                        : '#');
-                                @endphp
-                                <a href="{{ $routeUrl }}"
-                                   class="block px-4 py-3 bg-indigo-50 hover:bg-indigo-100 transition-colors"
-                                   data-notif-id="{{ $n->id }}"
-                                   data-read="false">
-                                    <div class="text-xs text-gray-400">{{ \Illuminate\Support\Carbon::parse($n->created_at)->diffForHumans() }}</div>
-                                    <div class="text-sm text-gray-800">{{ $message }}</div>
-                                </a>
-                            @endforeach
-
-                            @if($readNotifs->count() > 0)
-                                <div class="px-4 py-2 text-xs text-gray-400 border-t">Sebelumnya</div>
-                                @foreach($readNotifs as $n)
-                                    @php
-                                        $data = is_string($n->data) ? (json_decode($n->data, true) ?: []) : (is_array($n->data) ? $n->data : []);
-                                        $ticketId = $data['ticket_id'] ?? null;
-                                        $message  = $data['message'] ?? ($data['title'] ?? 'Notifikasi');
-                                        $routeUrl = $data['url'] ?? ($ticketId
-                                            ? (Auth::user()?->role === 'admin'
-                                                ? route('admin.tickets.show', $ticketId)
-                                                : route('officer.tickets.show', $ticketId))
-                                            : '#');
-                                    @endphp
-                                    <a href="{{ $routeUrl }}"
-                                       class="block px-4 py-3 bg-white hover:bg-gray-50 transition-colors"
-                                       data-notif-id="{{ $n->id }}"
-                                       data-read="true">
-                                        <div class="text-xs text-gray-400">{{ \Illuminate\Support\Carbon::parse($n->created_at)->diffForHumans() }}</div>
-                                        <div class="text-sm text-gray-800">{{ $message }}</div>
-                                    </a>
-                                @endforeach
-                            @else
-                                @if(($unreadNotifs->count() ?? 0) === 0)
-                                    <div class="px-4 py-6 text-center text-sm text-gray-500">Tidak ada notifikasi.</div>
-                                @endif
-                            @endif
+                        <div id="topNotifList" class="max-h-80 overflow-y-auto">
+                            <!-- Placeholder while loading -->
+                            <div class="px-4 py-3 text-sm text-gray-500">Memuat notifikasi...</div>
                         </div>
                     </div>
                 </div>
@@ -259,16 +187,19 @@
     (function () {
         const bell = document.getElementById('topNotifBell');
         const panel = document.getElementById('topNotifPanel');
+        const list = document.getElementById('topNotifList');
         const closeBtn = document.getElementById('topNotifClose');
-        const badge = bell?.querySelector('span');
+        const badge = document.getElementById('topNotifBadge');
         const csrf = '{{ csrf_token() }}';
+
+        let loaded = false;
 
         function togglePanel() {
             if (!panel) return;
             const isHidden = panel.classList.contains('hidden');
             panel.classList.toggle('hidden', !isHidden ? true : false);
-            // ensure panel aligns to bell and does not shift layout
             bell.setAttribute('aria-expanded', String(!isHidden));
+            if (!loaded) fetchNotifications();
         }
         function hidePanel() {
             panel?.classList.add('hidden');
@@ -276,7 +207,6 @@
         }
         function hidePanelOnOutside(e) {
             if (!panel || panel.classList.contains('hidden')) return;
-            // Only close if clicking outside the bell wrapper (relative container)
             const wrapper = bell?.parentElement;
             if (wrapper && !wrapper.contains(e.target)) hidePanel();
         }
@@ -284,8 +214,66 @@
         closeBtn?.addEventListener('click', hidePanel);
         document.addEventListener('click', hidePanelOnOutside);
 
+        function itemTemplate(n, read) {
+            const created = new Date(n.created_at);
+            const time = (window.moment ? window.moment(created).fromNow() : created.toLocaleString());
+            const data = (() => {
+                try { return typeof n.data === 'string' ? JSON.parse(n.data) : (n.data || {}); } catch { return {}; }
+            })();
+            const ticketId = data.ticket_id;
+            const message = data.message || data.title || 'Notifikasi';
+            const role = '{{ Auth::user()->role ?? '' }}';
+            const url = data.url || (ticketId ? (role === 'admin' ? '{{ url('/admin/tickets') }}/' + ticketId : '{{ url('/officer/tickets') }}/' + ticketId) : '#');
+            const bg = read ? 'bg-white hover:bg-gray-50' : 'bg-indigo-50 hover:bg-indigo-100';
+            return `<a href="${url}" class="block px-4 py-3 ${bg} transition-colors" data-notif-id="${n.id}" data-read="${read ? 'true' : 'false'}">
+                <div class="text-xs text-gray-400">${time}</div>
+                <div class="text-sm text-gray-800">${message}</div>
+            </a>`;
+        }
+
+        function renderNotifications(payload) {
+            const unread = Array.isArray(payload.unread) ? payload.unread : [];
+            const read = Array.isArray(payload.read) ? payload.read : [];
+            const count = Number(payload.count || 0);
+
+            // badge
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = String(count);
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            // list
+            const parts = [];
+            if (unread.length) {
+                unread.forEach(n => parts.push(itemTemplate(n, false)));
+            }
+            if (read.length) {
+                parts.push('<div class="px-4 py-2 text-xs text-gray-400 border-t">Sebelumnya</div>');
+                read.forEach(n => parts.push(itemTemplate(n, true)));
+            }
+            if (!unread.length && !read.length) {
+                parts.push('<div class="px-4 py-6 text-center text-sm text-gray-500">Tidak ada notifikasi.</div>');
+            }
+            list.innerHTML = parts.join('');
+            loaded = true;
+        }
+
+        function fetchNotifications() {
+            list.innerHTML = '<div class="px-4 py-3 text-sm text-gray-500">Memuat notifikasi...</div>';
+            fetch('{{ route('notifications.list') }}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.json())
+                .then(renderNotifications)
+                .catch(() => {
+                    list.innerHTML = '<div class="px-4 py-3 text-sm text-red-600">Gagal memuat notifikasi.</div>';
+                });
+        }
+
         // Mark single notification read on click then navigate
-        panel?.addEventListener('click', function (e) {
+        list?.addEventListener('click', function (e) {
             const link = e.target.closest('a[data-notif-id]');
             if (!link) return;
             const id = link.getAttribute('data-notif-id');
@@ -298,10 +286,11 @@
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' }
                 }).then(() => {
-                    if (badge) {
+                    // update UI: decrement badge, recolor
+                    if (badge && !badge.classList.contains('hidden')) {
                         const current = parseInt(badge.textContent || '0', 10);
                         if (current > 1) badge.textContent = String(current - 1);
-                        else badge.style.display = 'none';
+                        else badge.classList.add('hidden');
                     }
                     link.classList.remove('bg-indigo-50');
                     link.classList.add('bg-white');
@@ -312,6 +301,13 @@
                 });
             }
         });
+
+        // Optional: prefetch after first paint to fully avoid any header-blocking
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(fetchNotifications, 0);
+        } else {
+            document.addEventListener('DOMContentLoaded', () => setTimeout(fetchNotifications, 0));
+        }
 
         // Prevent panel from going off-screen on small viewports
         function adjustPanel() {

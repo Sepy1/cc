@@ -15,20 +15,28 @@
 @endphp
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex items-center justify-between mb-6">
+    {{-- Header + Actions (match admin) --}}
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-semibold">Tiket Saya</h1>
+            <h1 class="text-2xl font-semibold text-gray-900">Tiket Saya</h1>
         </div>
 
-        <form action="{{ route('officer.tickets.index') }}" method="GET" class="flex items-center gap-2">
-            <input name="q" value="{{ request('q') }}" placeholder="Cari tiket..." class="px-3 py-2 border rounded-md" />
-            <button class="px-3 py-2 bg-indigo-600 text-white rounded-md">Cari</button>
-        </form>
+        <div class="flex items-center gap-3">
+            <form action="{{ route('officer.tickets.index') }}" method="GET" class="flex items-center gap-2">
+                <label for="q" class="sr-only">Cari tiket</label>
+                <input id="q" name="q" value="{{ request('q') }}" type="search"
+                    placeholder="Cari nomor, judul, reporter..."
+                    class="w-64 sm:w-80 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                <button type="submit" class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18A7.5 7.5 0 1010.5 3a7.5 7.5 0 000 15z"/></svg>
+                    Tampilkan
+                </button>
+            </form>
+        </div>
     </div>
 
-    {{-- =======================
-         Card grid for tickets
-         ======================= --}}
+    {{-- LIST TIKET (CARD GRID) --}}
     @if($tickets->count())
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach($tickets as $t)
@@ -39,11 +47,19 @@
                     $badgeClass = $statusColors[$statusKey] ?? 'bg-gray-100 text-gray-700';
                 @endphp
 
-                <article class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-300 ease-out hover:-translate-y-1">
+                <article class="
+                    bg-white border border-gray-200
+                    rounded-2xl shadow-sm
+                    hover:shadow-lg hover:border-gray-300
+                    transition-all duration-300 ease-out
+                    hover:-translate-y-1
+                ">
                     <div class="px-5 py-5">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="flex-1 pr-3">
-                                <a href="{{ route('officer.tickets.show', $t->id) }}" class="text-sm font-semibold text-indigo-600 hover:underline">
+                        {{-- Header No Tiket + Status (match admin) --}}
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <a href="{{ route('officer.tickets.show', $t->id) }}"
+                                    class="text-sm font-semibold text-indigo-600 hover:underline">
                                     {{ $t->ticket_no }}
                                 </a>
                                 <div class="mt-1 text-lg font-semibold text-gray-900 leading-snug">
@@ -51,7 +67,7 @@
                                 </div>
                             </div>
 
-                            <div class="text-right flex-shrink-0">
+                            <div class="text-right">
                                 <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full {{ $badgeClass }}">
                                     {{ ucfirst($t->status ?? 'Unknown') }}
                                 </span>
@@ -61,46 +77,50 @@
                             </div>
                         </div>
 
-                        <div class="mt-4 flex items-start justify-between">
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <div class="text-sm font-medium text-gray-800">
-                                        {{ $t->reporter_name }}
-                                    </div>
-                                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full {{ $typeBadge }}">
-                                        {{ $type === 'nasabah' ? 'Nasabah' : 'Umum' }}
-                                    </span>
+                        {{-- Reporter (match admin) --}}
+                        <div class="mt-4">
+                            <div class="flex items-center gap-2">
+                                <div class="text-sm font-medium text-gray-800">
+                                    {{ $t->reporter_name }}
                                 </div>
-                                <div class="text-xs text-gray-400 mt-1">{{ $t->email ?? '-' }}</div>
-                                @if(!empty($t->detail))
-                                    <div class="mt-3 text-sm text-gray-600 line-clamp-3 leading-relaxed">
-                                        {{ \Illuminate\Support\Str::limit($t->detail, 200) }}
-                                    </div>
-                                @endif
+                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full {{ $typeBadge }}">
+                                    {{ $type === 'nasabah' ? 'Nasabah' : 'Umum' }}
+                                </span>
                             </div>
+                            <div class="text-xs text-gray-400 mt-1">{{ $t->email ?? '-' }}</div>
+                        </div>
 
-                            <div class="flex flex-col items-end gap-3 ml-4">
-                                <a href="{{ route('officer.tickets.show', $t->id) }}" class="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg shadow hover:bg-indigo-700 hover:shadow-md transition">
-                                    Lihat
-                                </a>
-
-                                {{-- quick meta (optional) --}}
-                                {{-- <div class="text-xs text-gray-400">#label</div> --}}
+                        {{-- Detail preview --}}
+                        @if(!empty($t->detail))
+                            <div class="mt-4 text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                                {{ \Illuminate\Support\Str::limit($t->detail, 200) }}
                             </div>
+                        @endif
+
+                        {{-- Actions --}}
+                        <div class="mt-5 flex justify-end">
+                            <a href="{{ route('officer.tickets.show', $t->id) }}"
+                                class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg shadow hover:bg-indigo-700 hover:shadow-md transition">
+                                Lihat
+                            </a>
                         </div>
                     </div>
                 </article>
             @endforeach
         </div>
 
-        {{-- Pagination --}}
+        {{-- Pagination (match admin) --}}
         <div class="mt-6">
             {{ $tickets->withQueryString()->links() }}
         </div>
     @else
-        <div class="bg-white border rounded-lg p-8 text-center">
-            <h3 class="text-lg font-medium text-gray-900">Belum ada tiket</h3>
-            <p class="text-sm text-gray-500">Tidak ada tiket yang diassign ke Anda.</p>
+        {{-- Empty state (match admin style) --}}
+        <div class="bg-white border rounded-lg p-8 text-center shadow-sm">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6M9 16h6M7 8h10M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            <h3 class="mt-4 text-lg font-medium text-gray-900">Belum ada tiket</h3>
+            <p class="mt-2 text-sm text-gray-500">Tidak ada tiket yang diassign ke Anda.</p>
         </div>
     @endif
 </div>
@@ -108,7 +128,7 @@
 @push('scripts')
 <script>
 (function () {
-    // Cleanup: no bell/panel scripts
+    // ...existing code...
 })();
 </script>
 @endpush

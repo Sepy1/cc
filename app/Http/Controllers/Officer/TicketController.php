@@ -228,14 +228,9 @@ class TicketController extends Controller
             return redirect()->back()->with('error', 'Gagal menyimpan status: ' . $e->getMessage());
         }
 
-        // Kirim notif sebagai flash (satu sumber)
-return redirect()->route('officer.tickets.show', $ticket->id)
-    ->with('notif', [
-        'type' => 'status',
-        'message' => 'Status tiket diubah dari ' . ucfirst($old) . ' ke ' . ucfirst($ticket->status),
-    ])
-    ->with('success', 'Status tiket diubah menjadi "' . ucfirst($request->status) . '"');
-
+        return redirect()
+            ->route('officer.tickets.show', $ticket->id)
+            ->with('success', 'Status tiket diubah menjadi "' . ucfirst($request->status) . '"');
     }
 
     // Balasan officer (simpan ke DB)
@@ -316,10 +311,7 @@ return redirect()->route('officer.tickets.show', $ticket->id)
         }
 
         // flash notif reply (officer)
-        return back()->with('notif', [
-    'type' => 'reply',
-    'message' => 'Balasan terkirim ke tiket #' . $ticket->ticket_no,
-]);
+        return back()->with('success', 'Balasan terkirim ke tiket #' . $ticket->ticket_no);
     }
 
     public function showProfile()
