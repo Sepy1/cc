@@ -105,12 +105,6 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])
             ->name('reports.export_pdf');
 
-        // Notifikasi: tandai sebagai dibuka (server-side via session)
-        Route::post('/notifications/seen', function () {
-            session(['notif_seen_at_admin' => now()]);
-            return response()->noContent();
-        })->name('notifications.seen');
-
         // Profile
         Route::get('/profile', [\App\Http\Controllers\Admin\TicketAdminController::class, 'showProfile'])->name('profile.show');
         Route::post('/profile', [\App\Http\Controllers\Admin\TicketAdminController::class, 'updateProfile'])->name('profile.update');
@@ -133,12 +127,6 @@ Route::middleware(['auth', 'role:officer'])
         Route::post('tickets/{ticket}/reply', [\App\Http\Controllers\Officer\TicketController::class, 'reply'])->name('tickets.reply');
         Route::post('tickets/{ticket}/update-status', [\App\Http\Controllers\Officer\TicketController::class, 'updateStatus'])->name('tickets.update_status');
 
-        // Notifikasi: tandai sebagai dibuka (server-side via session)
-        Route::post('/notifications/seen', function () {
-            session(['notif_seen_at_officer' => now()]);
-            return response()->noContent();
-        })->name('notifications.seen');
-
         // Profile
         Route::get('/profile', [\App\Http\Controllers\Officer\TicketController::class, 'showProfile'])->name('profile.show');
         Route::post('/profile', [\App\Http\Controllers\Officer\TicketController::class, 'updateProfile'])->name('profile.update');
@@ -150,3 +138,13 @@ Route::middleware(['auth', 'role:officer'])
 |--------------------------------------------------------------------------
 */
 require __DIR__.'/auth.php';
+
+// Notifications: mark as read (auth required)
+Route::middleware(['auth'])->post('/notifications/{id}/read', function ($id) {
+    $user = Auth::user();
+    \Illuminate\Support\Facades\DB::table('notifications')
+        ->where('id', $id)
+        ->where('notifiable_id', $user->id)
+        ->update(['read_at' => now()]);
+    return response()->noContent();
+})->name('notifications.read');

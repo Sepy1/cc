@@ -227,6 +227,24 @@ class TicketAdminController extends Controller
             if (isset($data['status']) && $originalStatus !== $ticket->status) {
                 // bila status berubah, gunakan helper model untuk mencatat event (ikutkan tindak_lanjut)
                 $ticket->setStatus($ticket->status, auth()->id(), $data['tindak_lanjut'] ?? null);
+
+                // Create notification for assigned officer
+                if ($ticket->assigned_to) {
+                    \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                        'id' => (string) \Illuminate\Support\Str::uuid(),
+                        'type' => 'ticket.status_changed',
+                        'notifiable_type' => \App\Models\User::class,
+                        'notifiable_id' => $ticket->assigned_to,
+                        'data' => json_encode([
+                            'ticket_id' => $ticket->id,
+                            'message' => "Status tiket {$ticket->ticket_no} diubah menjadi " . ucfirst($ticket->status),
+                            'url' => route('officer.tickets.show', $ticket->id),
+                        ], JSON_UNESCAPED_UNICODE),
+                        'read_at' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
 
             DB::commit();
@@ -325,6 +343,24 @@ class TicketAdminController extends Controller
             'message' => 'Komentar baru dikirim ke tiket #' . $ticket->ticket_no,
         ]);
 
+        // Notify assigned officer about new comment
+        if ($ticket->assigned_to) {
+            \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => 'ticket.replied',
+                'notifiable_type' => \App\Models\User::class,
+                'notifiable_id' => $ticket->assigned_to,
+                'data' => json_encode([
+                    'ticket_id' => $ticket->id,
+                    'message' => "Komentar baru pada tiket {$ticket->ticket_no}",
+                    'url' => route('officer.tickets.show', $ticket->id),
+                ], JSON_UNESCAPED_UNICODE),
+                'read_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         return redirect()
             ->route('admin.tickets.show', $ticket->id)
             ->with('success', 'Balasan tersimpan' . ($path ? ' dengan lampiran.' : '.'));
@@ -404,6 +440,22 @@ class TicketAdminController extends Controller
         \Illuminate\Support\Facades\Log::warning('assign_mail_failed', ['ticket_id'=>$ticket->id,'error'=>$e->getMessage()]);
     }
 
+    // Create notification for the assignee about assignment
+    \Illuminate\Support\Facades\DB::table('notifications')->insert([
+        'id' => (string) \Illuminate\Support\Str::uuid(),
+        'type' => 'ticket.assigned',
+        'notifiable_type' => \App\Models\User::class,
+        'notifiable_id' => $assignee->id,
+        'data' => json_encode([
+            'ticket_id' => $ticket->id,
+            'message' => "Tiket {$ticket->ticket_no} di-assign ke Anda",
+            'url' => route('officer.tickets.show', $ticket->id),
+        ], JSON_UNESCAPED_UNICODE),
+        'read_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
     return back()->with('success', 'Tiket berhasil di-assign ke '.$assignee->name);
 }
 
@@ -436,6 +488,24 @@ class TicketAdminController extends Controller
             'type' => 'status',
             'message' => 'Status tiket diubah dari ' . ucfirst($old) . ' ke ' . ucfirst($ticket->status),
         ]);
+
+        // Notify assigned officer
+        if ($ticket->assigned_to) {
+            \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => 'ticket.status_changed',
+                'notifiable_type' => \App\Models\User::class,
+                'notifiable_id' => $ticket->assigned_to,
+                'data' => json_encode([
+                    'ticket_id' => $ticket->id,
+                    'message' => "Status tiket {$ticket->ticket_no} diubah menjadi " . ucfirst($ticket->status),
+                    'url' => route('officer.tickets.show', $ticket->id),
+                ], JSON_UNESCAPED_UNICODE),
+                'read_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         // Email reporter (hide button)
         try {

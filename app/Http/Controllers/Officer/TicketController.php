@@ -194,6 +194,29 @@ class TicketController extends Controller
                 $ticket->recordEvent('status_changed', Auth::id(), ['status' => $request->status]);
             }
 
+            // Notify all admins about status change
+            try {
+                $adminIds = \App\Models\User::where('role', 'admin')->pluck('id');
+                foreach ($adminIds as $adminId) {
+                    \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                        'id' => (string) \Illuminate\Support\Str::uuid(),
+                        'type' => 'ticket.status_changed',
+                        'notifiable_type' => \App\Models\User::class,
+                        'notifiable_id' => $adminId,
+                        'data' => json_encode([
+                            'ticket_id' => $ticket->id,
+                            'message' => "Status tiket {$ticket->ticket_no} diubah menjadi " . ucfirst($ticket->status),
+                            'url' => route('admin.tickets.show', $ticket->id),
+                        ], JSON_UNESCAPED_UNICODE),
+                        'read_at' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('notif_insert_failed', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
+            }
+
             DB::commit();
         } catch (Exception $e) {
             DB::rollBack();
@@ -267,6 +290,29 @@ return redirect()->route('officer.tickets.show', $ticket->id)
             $ticket->recordEvent('replied', Auth::id(), [
                 'snippet' => \Illuminate\Support\Str::limit((string)($validated['message'] ?? ''), 120),
             ]);
+        }
+
+        // Notify all admins about new comment
+        try {
+            $adminIds = \App\Models\User::where('role', 'admin')->pluck('id');
+            foreach ($adminIds as $adminId) {
+                \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
+                    'type' => 'ticket.replied',
+                    'notifiable_type' => \App\Models\User::class,
+                    'notifiable_id' => $adminId,
+                    'data' => json_encode([
+                        'ticket_id' => $ticket->id,
+                        'message' => "Komentar baru pada tiket {$ticket->ticket_no}",
+                        'url' => route('admin.tickets.show', $ticket->id),
+                    ], JSON_UNESCAPED_UNICODE),
+                    'read_at' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('notif_insert_failed', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
         }
 
         // flash notif reply (officer)
