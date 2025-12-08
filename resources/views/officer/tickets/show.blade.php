@@ -19,6 +19,11 @@
     // WhatsApp normalization (match admin pattern)
     $rawPhone = preg_replace('/\D/', '', $ticket->phone ?? '');
     $waNumber = (strlen($rawPhone) > 3 && substr($rawPhone, 0, 1) === '0') ? ('62' . substr($rawPhone, 1)) : $rawPhone;
+
+    // Prepare nasabah fields
+    $isNasabah = strtolower($ticket->reporter_type ?? (($ticket->is_nasabah ?? false) ? 'nasabah' : 'umum')) === 'nasabah';
+    $ktpPath   = $ticket->attachment_ktp ?? null;
+    $buktiPath = $ticket->attachment_bukti ?? null;
 @endphp
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -99,6 +104,84 @@
                         <div class="mt-1 text-sm text-gray-800">{{ $ticket->updated_at?->diffForHumans() ?? '-' }}</div>
                     </div>
                 </div>
+
+                {{-- Informasi Nasabah --}}
+                @if($isNasabah)
+                    <div class="bg-white border border-gray-100 rounded-lg">
+                        <div class="px-4 py-3 border-b">
+                            <h3 class="text-sm font-medium text-gray-700">Informasi Nasabah</h3>
+                        </div>
+                        <div class="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            @if(filled($ticket->id_ktp))
+                                <div>
+                                    <div class="text-xs text-gray-500">Nomor KTP</div>
+                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->id_ktp }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->nomor_rekening))
+                                <div>
+                                    <div class="text-xs text-gray-500">Nomor Rekening</div>
+                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->nomor_rekening }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->nama_ibu))
+                                <div>
+                                    <div class="text-xs text-gray-500">Nama Ibu</div>
+                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->nama_ibu }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->alamat))
+                                <div class="sm:col-span-2">
+                                    <div class="text-xs text-gray-500">Alamat</div>
+                                    <div class="mt-1 text-sm text-gray-800 whitespace-pre-line">{{ $ticket->alamat }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->tempat_lahir))
+                                <div>
+                                    <div class="text-xs text-gray-500">Tempat Lahir</div>
+                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->tempat_lahir }}</div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->tanggal_lahir))
+                                <div>
+                                    <div class="text-xs text-gray-500">Tanggal Lahir</div>
+                                    <div class="mt-1 text-sm text-gray-800">
+                                        {{ \Illuminate\Support\Carbon::parse($ticket->tanggal_lahir)->format('d M Y') }}
+                                    </div>
+                                </div>
+                            @endif
+                            @if(filled($ticket->kode_kantor))
+                                <div>
+                                    <div class="text-xs text-gray-500">Kode Kantor</div>
+                                    <div class="mt-1 text-sm text-gray-800">{{ $ticket->kode_kantor }}</div>
+                                </div>
+                            @endif
+
+                            @if($ktpPath)
+                                <div class="sm:col-span-2 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                    </svg>
+                                    <span class="text-sm text-gray-700">Attachment KTP</span>
+                                    <a class="text-sm text-indigo-600 hover:underline" target="_blank" href="{{ asset('storage/' . $ktpPath) }}">
+                                        {{ basename($ktpPath) }}
+                                    </a>
+                                </div>
+                            @endif
+                            @if($buktiPath)
+                                <div class="sm:col-span-2 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                    </svg>
+                                    <span class="text-sm text-gray-700">Attachment Bukti</span>
+                                    <a class="text-sm text-indigo-600 hover:underline" target="_blank" href="{{ asset('storage/' . $buktiPath) }}">
+                                        {{ basename($buktiPath) }}
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
 
                 {{-- Komentar (match admin styles) --}}
                 <div class="bg-white border border-gray-100 rounded-lg">

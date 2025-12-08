@@ -23,15 +23,6 @@
     h1{margin:0 0 6px; font-size:22px; font-weight:700}
     p.lead{margin:0 0 20px; color:var(--muted); font-size:14px}
 
-    /* API settings */
-    .api-settings { position:absolute; right:18px; top:18px; width:360px; background:#fafafa; border-radius:10px; padding:12px; border:1px solid var(--border); box-shadow:0 8px 20px rgba(2,6,23,0.03) }
-    .api-settings h4{margin:0 0 8px; font-size:13px}
-    .api-row{display:flex; gap:8px; align-items:center}
-    .api-row input[type="text"]{flex:1; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--input-bg); font-size:13px}
-    .api-row button{padding:8px 10px; border-radius:8px; border:none; cursor:pointer; background:var(--accent); color:white; font-weight:700}
-    .api-actions{display:flex; gap:8px; margin-top:8px}
-    .api-note{font-size:12px; color:var(--muted); margin-top:8px}
-
     form{display:block}
 
     /* layout grids */
@@ -66,7 +57,6 @@
 
     /* responsive */
     @media (max-width:1200px){
-      .api-settings { position:static; width:100%; margin-bottom:16px; }
       .card{padding:22px}
     }
     @media (max-width:980px){
@@ -77,44 +67,41 @@
       .card{padding:18px}
     }
 
-    /* visual alignment to match provided image */
-    .label-title.small{font-size:14px; font-weight:600}
-    .muted-note{color:var(--muted); font-size:13px}
-
-    /* file inputs styling: keep native but visually balanced */
     .file-row{display:grid; grid-template-columns:1fr 1fr; gap:36px; margin-top:6px}
-
-    /* submit area left aligned like the image */
     .submit-row{display:flex; gap:18px; align-items:center; margin-top:18px}
 
-    .brand { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
-    .brand img { height:36px; }
-    .brand .appname { font-weight:700; font-size:18px; }
+    /* ticket search box */
+    .search-row{display:flex; gap:12px; margin-bottom:18px; align-items:center}
+    .search-input{flex:1}
+    .ticket-card{border:1px solid var(--border); border-radius:10px; padding:14px; background:linear-gradient(180deg,#fff,#fbfbfd); margin-top:12px}
+    .ticket-row{display:flex; gap:12px; flex-wrap:wrap}
+    .ticket-col{min-width:160px}
+    .small-note{font-size:13px; color:var(--muted)}
+    .attachment-list{margin-top:8px}
+    .attachment-list a{display:inline-block; margin-right:8px; font-size:13px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="brand">
-        <img src="/images/logo.png" alt="Logo">
-        <div class="appname">Call Center</div>
-      </div>
       <h1>Buat Tiket — Nasabah</h1>
 
+      <!-- SEARCH TICKET -->
+      <div>
+        <div class="label-note">Cari tiket berdasarkan nomor tiket. Endpoint: <code>GET /tickets/{ticket_no}</code></div>
+        <div class="search-row" style="margin-top:8px;">
+          <input type="text" id="searchTicketNo" class="search-input" placeholder="Masukkan nomor tiket (mis. TKT-20251207-001)" />
+          <button id="btnSearch" class="btn ghost">Cari Tiket</button>
+        </div>
+        <div id="searchMsg" class="msg" role="status" aria-live="polite"></div>
+        <div id="searchResult"></div>
+        <hr style="margin:18px 0;">
+      </div>
+
+      <!-- CREATE TICKET FORM -->
       <form id="ticketForm" autocomplete="off" enctype="multipart/form-data" novalidate>
-        <!-- reporter_type fixed (nasabah) -->
         <input type="hidden" name="reporter_type" value="nasabah">
 
-        <!-- Judul / Layanan (full width as in image) -->
-        <div class="full">
-          <label class="block">
-            <span class="label-title">Layanan (Judul tiket) <span class="required">*</span></span>
-            <small class="label-note">Isi dengan layanan / judul masalah — disimpan ke <code>title</code></small>
-            <input type="text" name="title" placeholder="Contoh: Transfer belum masuk" required>
-          </label>
-        </div>
-
-        <!-- Nama dan Email (2 columns) -->
         <div class="grid-2">
           <label class="block">
             <span class="label-title">Nama Nasabah <span class="required">*</span></span>
@@ -123,16 +110,14 @@
 
           <label class="block">
             <span class="label-title">Email <span class="required">*</span></span>
-            
             <input type="email" name="email" placeholder="email@contoh.com" required>
           </label>
         </div>
 
-        <!-- No e-KTP, Alamat, Tempat Lahir (3 columns like image) -->
         <div class="grid-3">
           <label class="block">
             <span class="label-title">No e-KTP</span>
-                       <input type="text" name="id_ktp" placeholder="Nomor KTP / e-KTP">
+            <input type="text" name="id_ktp" placeholder="Nomor KTP / e-KTP">
           </label>
 
           <label class="block">
@@ -142,36 +127,68 @@
 
           <label class="block">
             <span class="label-title">Alamat <span class="required">*</span></span>
-                       <input type="text" name="alamat" placeholder="Alamat domisili" required>
+            <input type="text" name="alamat" placeholder="Alamat domisili" required>
           </label>
         </div>
 
-        <!-- Tanggal Lahir, No HP, No Rekening -->
         <div class="grid-3">
           <label class="block">
-            <span class="label-title">Tanggal Lahir</span>
-            
-            <input type="date" name="tgl_lahir">
+            <span class="label-title">Tempat Lahir <span class="required">*</span></span>
+            <input type="text" name="tempat_lahir" placeholder="Kota tempat lahir" required>
+          </label>
+
+          <label class="block">
+            <span class="label-title">Tanggal Lahir <span class="required">*</span></span>
+            <input type="date" name="tgl_lahir" required>
           </label>
 
           <label class="block">
             <span class="label-title">No. Telepon / HP <span class="required">*</span></span>
-            
             <input type="tel" name="phone" placeholder="08xx xxxx xxxx" required>
           </label>
 
           <label class="block">
             <span class="label-title">No. Rekening <span class="required">*</span></span>
-           
             <input type="text" name="nomor_rekening" placeholder="Nomor rekening" required>
           </label>
-        </div>
 
-        <!-- Pokok Pengaduan (dropdown), (placeholder), Tanggal Kejadian -->
-        <div class="grid-3">
+          <label class="block">
+            <span class="label-title">Kantor Cabang <span class="required">*</span></span>
+            <select name="kode_kantor" required>
+              <option value="" disabled selected>-- Pilih Kantor Cabang --</option>
+              <option value="001">Kantor Cabang Utama</option>
+              <option value="002">Rembang</option>
+              <option value="003">Pati</option>
+              <option value="004">Demak</option>
+              <option value="005">Kendal</option>
+              <option value="006">Salatiga</option>
+              <option value="007">Semarang</option>
+              <option value="008">Wonogiri</option>
+              <option value="009">Surakarta</option>
+              <option value="010">Karanganyar</option>
+              <option value="011">Sukoharjo</option>
+              <option value="012">Sragen</option>
+              <option value="013">Boyolali</option>
+              <option value="014">Magelang</option>
+              <option value="015">Wonosobo</option>
+              <option value="016">Purworejo</option>
+              <option value="017">Kebumen</option>
+              <option value="018">Banjarnegara</option>
+              <option value="019">Purbalingga</option>
+              <option value="020">Banyumas</option>
+              <option value="021">Cilacap</option>
+              <option value="022">Kabupaten Tegal</option>
+              <option value="023">Brebes</option>
+              <option value="024">Kota Tegal</option>
+              <option value="025">Pemalang</option>
+              <option value="026">Kota Pekalongan</option>
+              <option value="027">Kabupaten Pekalongan</option>
+              <option value="028">Batang</option>
+            </select>
+          </label>
+
           <label class="block">
             <span class="label-title">Pokok Pengaduan (Kategori) <span class="required">*</span></span>
-           
             <select name="category" required>
               <option value="" disabled selected>-- Pilih kategori --</option>
               <option value="tabungan">Tabungan</option>
@@ -182,15 +199,20 @@
             </select>
           </label>
 
-          
+        </div>
+
+        <div class="grid-3">
           <label class="block">
             <span class="label-title">Tanggal Kejadian</span>
-   
             <input type="date" name="tanggal_kejadian">
+          </label>
+
+          <label class="block">
+            <span class="label-title">Judul Tiket <span class="required">*</span></span>
+            <input type="text" name="title" placeholder="Contoh: Transfer belum masuk" required>
           </label>
         </div>
 
-        <!-- Deskripsi -->
         <div class="full">
           <label class="block">
             <span class="label-title">Deskripsi Permasalahan <span class="required">*</span></span>
@@ -199,7 +221,6 @@
           </label>
         </div>
 
-        <!-- Attach Files (side-by-side as image) -->
         <div class="file-row">
           <label class="block">
             <span class="label-title">Upload Foto / Scan KTP <span class="required">*</span></span>
@@ -214,7 +235,6 @@
           </label>
         </div>
 
-        <!-- Hidden status default open -->
         <input type="hidden" name="status" value="open">
 
         <div class="submit-row">
@@ -230,93 +250,289 @@
   <script>
     (function(){
       const LS_KEY = 'tiket_api_url';
-      const LS_USE_REL = 'tiket_api_use_relative';
-      const DEFAULT_API = 'http://127.0.0.1:8000/api/tickets';
+      const DEFAULT_API = 'https://localhost:8000/api/tickets';
 
       function ready(fn){ if (document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
       ready(main);
 
       function normalizeApiUrl(input){
+        // ensure full endpoint ends with /api/tickets (no trailing slash)
         if (!input) return DEFAULT_API;
         let u = input.trim();
-        // remove trailing slash
         if (u.endsWith('/')) u = u.slice(0, -1);
-        // if contains /api then treat as full endpoint
-        if (u.match(/\/api(\/|$)/)) return u;
-        // otherwise assume base URL and append path
+        if (u.match(/\/api(\/|$)/)) {
+          if (u.match(/\/api\/tickets(\/|$)/)) {
+            return u.replace(/\/$/,'');
+          }
+          return u + '/tickets';
+        }
         return u + '/api/tickets';
+      }
+
+      function getTicketsBase(input){
+        // returns base /api/tickets without trailing slash
+        return normalizeApiUrl(input);
+      }
+
+      function getTicketUrl(ticketNo){
+        const base = getTicketsBase(getSavedApi());
+        // append ticketNo, ensure no double slashes
+        return base + '/' + encodeURIComponent(ticketNo);
       }
 
       function getSavedApi(){
         return localStorage.getItem(LS_KEY) || DEFAULT_API;
       }
-      function getUseRelative(){
-        return localStorage.getItem(LS_USE_REL) === '1';
+
+      function setMsg(elId, text, type=''){
+        const msg = document.getElementById(elId);
+        if (!msg) return;
+        msg.textContent = text;
+        msg.className = 'msg ' + (type === 'ok' ? 'ok' : type === 'err' ? 'err' : '');
+      }
+      function clearMsg(elId){
+        const msg = document.getElementById(elId);
+        if (!msg) return;
+        msg.textContent = '';
+        msg.className = 'msg';
+      }
+
+      async function postJson(url, obj){
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(obj),
+          mode: 'cors'
+        });
+        return res;
+      }
+
+      async function postFormData(url, fd){
+        const res = await fetch(url, {
+          method: 'POST',
+          // DO NOT set Content-Type here; browser will set multipart/form-data boundary
+          headers: { 'Accept': 'application/json' },
+          body: fd,
+          mode: 'cors'
+        });
+        return res;
+      }
+
+      async function getJson(url){
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          mode: 'cors'
+        });
+        return res;
+      }
+
+      function parseJsonSafe(res){
+        return res.text().then(txt => {
+          try { return txt ? JSON.parse(txt) : {}; }
+          catch(e){ return { _raw: txt }; }
+        });
+      }
+
+      function ensureUrl(u) {
+        if (!u) return null;
+        // If already absolute, return
+        if (/^https?:\/\//i.test(u)) return u;
+        // If it's a storage-relative path like tickets/ktp/..., prefix /storage/
+        if (!u.startsWith('/')) return '/storage/' + u.replace(/^\/+/, '');
+        return u;
+      }
+
+      function renderTicket(data){
+        const container = document.getElementById('searchResult');
+        container.innerHTML = '';
+        if (!data) return;
+
+        // normalized: { success: true, data: {...} }
+        const t = data?.data || data || {};
+        const el = document.createElement('div');
+        el.className = 'ticket-card';
+
+        // header
+        const h = document.createElement('div');
+        h.innerHTML = '<strong>Nomor Tiket:</strong> ' + (t.ticket_no || '-') + ' &nbsp; <span class="small-note">[' + (t.status || '-') + ']</span>';
+        el.appendChild(h);
+
+        // basic rows
+        const row = document.createElement('div');
+        row.className = 'ticket-row';
+        const addCol = (title, val) => {
+          const c = document.createElement('div');
+          c.className = 'ticket-col';
+          c.innerHTML = '<div class="small-note">'+ title +'</div><div>' + (val || '-') + '</div>';
+          row.appendChild(c);
+        };
+        addCol('Pelapor', t.reporter_name || '-');
+        addCol('Email / Telp', (t.email || '-') + (t.phone ? ' / ' + t.phone : ''));
+        addCol('Kategori', t.category || '-');
+        addCol('Cabang', t.kode_kantor || '-');
+        addCol('Tanggal dibuat', t.created_at || '-');
+        el.appendChild(row);
+
+        // title & detail
+        const title = document.createElement('div');
+        title.style.marginTop = '12px';
+        title.innerHTML = '<strong>' + (t.title || '-') + '</strong>';
+        el.appendChild(title);
+
+        const detail = document.createElement('div');
+        detail.style.marginTop = '8px';
+        detail.innerHTML = '<pre style="white-space:pre-wrap;margin:0;font-family:inherit;">' + (t.detail || '-') + '</pre>';
+        el.appendChild(detail);
+
+        // Attachments: prefer normalized URLs
+        const ktpUrl = ensureUrl(t.attachment_ktp_url || t.attachment_ktp);
+        const buktiUrl = ensureUrl(t.attachment_bukti_url || t.attachment_bukti);
+
+        if (ktpUrl || buktiUrl) {
+          const attWrap = document.createElement('div');
+          attWrap.className = 'attachment-list';
+          attWrap.innerHTML = '<div class="small-note">Lampiran:</div>';
+          if (ktpUrl) {
+            const a1 = document.createElement('a');
+            a1.href = ktpUrl;
+            a1.target = '_blank';
+            a1.rel = 'noopener noreferrer';
+            a1.textContent = 'KTP';
+            attWrap.appendChild(a1);
+          }
+          if (buktiUrl) {
+            const a2 = document.createElement('a');
+            a2.href = buktiUrl;
+            a2.target = '_blank';
+            a2.rel = 'noopener noreferrer';
+            a2.textContent = 'Bukti';
+            attWrap.appendChild(a2);
+          }
+          el.appendChild(attWrap);
+        }
+
+        container.appendChild(el);
+      }
+
+      async function handleSearchTicket(ticketNo){
+        clearMsg('searchMsg');
+        const resultEl = document.getElementById('searchResult');
+        resultEl.innerHTML = '';
+        if (!ticketNo || !ticketNo.trim()) {
+          setMsg('searchMsg','Masukkan nomor tiket yang valid','err');
+          return;
+        }
+        const btn = document.getElementById('btnSearch');
+        if (btn) { btn.disabled = true; btn.textContent = 'Mencari...'; }
+
+        try {
+          const url = getTicketUrl(ticketNo.trim());
+          const res = await getJson(url);
+          const data = await parseJsonSafe(res);
+          if (!res.ok || data?.success === false) {
+            const msg = (data?.message) ? data.message :
+                        (data?._raw) ? data._raw :
+                        `HTTP ${res.status} ${res.statusText}`;
+            setMsg('searchMsg','Gagal mengambil tiket: ' + msg, 'err');
+          } else {
+            setMsg('searchMsg','Tiket ditemukan','ok');
+            renderTicket(data);
+          }
+        } catch (err) {
+          setMsg('searchMsg','Terjadi kesalahan: ' + (err.message || err), 'err');
+          console.error(err);
+        } finally {
+          if (btn) { btn.disabled = false; btn.textContent = 'Cari Tiket'; }
+        }
       }
 
       function main(){
         const form = document.getElementById('ticketForm');
         const btnReset = document.getElementById('btnReset');
         const btnSubmit = document.getElementById('btnSubmit');
-        const msg = document.getElementById('msg');
+        const btnSearch = document.getElementById('btnSearch');
+        const inputSearch = document.getElementById('searchTicketNo');
 
         if (!form) return console.warn('Form not found');
 
-        btnReset && btnReset.addEventListener('click', () => { form.reset(); clearMsg(); });
-
-        function setMsg(text, type='') { if (!msg) return; msg.textContent = text; msg.className = 'msg ' + (type === 'ok' ? 'ok' : type === 'err' ? 'err' : ''); }
-        function clearMsg(){ if (msg) { msg.textContent=''; msg.className='msg'; } }
+        btnReset && btnReset.addEventListener('click', () => { form.reset(); clearMsg('msg'); });
 
         form.addEventListener('submit', async function(e){
-          e.preventDefault(); clearMsg();
+          e.preventDefault(); clearMsg('msg');
           if (!form.checkValidity()) { form.reportValidity(); return; }
           if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = 'Mengirim...'; }
 
           try {
             const fd = new FormData(form);
-            // satukan tanggal_kejadian ke detail untuk memudahkan
+            // combine tanggal_kejadian to detail if present
             const tanggal = form.querySelector('[name="tanggal_kejadian"]')?.value || '';
             const deskripsi = form.querySelector('[name="detail"]')?.value || '';
-            fd.set('detail', [tanggal, deskripsi].filter(Boolean).join('\n\n'));
-            fd.set('reporter_type', 'nasabah'); // memastikan is_nasabah di API
+            if (tanggal) fd.set('detail', [tanggal, deskripsi].filter(Boolean).join('\n\n'));
 
-            // Selalu kirim multipart jika ada file
-            const hasFile =
-              (fd.get('attachment_ktp') && fd.get('attachment_ktp').size > 0) ||
-              (fd.get('attachment_bukti') && fd.get('attachment_bukti').size > 0);
+            // ensure reporter_type
+            fd.set('reporter_type', 'nasabah');
 
-            const API_URL = localStorage.getItem('tiket_api_url') || 'http://127.0.0.1:8000/api/tickets';
+            // check files
+            const attachmentKtp = fd.get('attachment_ktp');
+            const attachmentBukti = fd.get('attachment_bukti');
+            const hasFile = (attachmentKtp && attachmentKtp.size > 0) || (attachmentBukti && attachmentBukti.size > 0);
+
+            const API_URL = normalizeApiUrl(getSavedApi());
+
             let res;
-
             if (hasFile) {
-              res = await fetch(API_URL, { method: 'POST', body: fd, mode: 'cors' });
+              res = await postFormData(API_URL, fd);
             } else {
-              // kirim JSON jika tanpa file
-              const obj = Object.fromEntries(fd.entries());
-              Object.keys(obj).forEach(k => { if (obj[k] === '') delete obj[k]; });
+              // convert FormData to plain object, removing empty strings
+              const obj = {};
+              for (const [k,v] of fd.entries()){
+                if (v === '' || v === null) continue;
+                obj[k] = v;
+              }
               obj.reporter_type = 'nasabah';
-              res = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(obj),
-                mode: 'cors'
-              });
+              res = await postJson(API_URL, obj);
             }
 
-            const data = await res.json().catch(()=>({}));
+            const data = await parseJsonSafe(res);
             if (!res.ok) {
-              setMsg((data?.message || 'Gagal membuat tiket') + (data?.errors ? '\n' + JSON.stringify(data.errors, null, 2) : ''), 'err');
+              // try to extract useful message
+              const msg = (data?.message) ? data.message :
+                          (data?.errors) ? JSON.stringify(data.errors, null, 2) :
+                          (data?._raw) ? data._raw :
+                          `HTTP ${res.status} ${res.statusText}`;
+              setMsg('msg','Gagal membuat tiket: ' + msg, 'err');
             } else {
-              setMsg('Tiket berhasil dibuat: ' + (data?.data?.ticket_no || '(nomor tidak tersedia)'), 'ok');
+              // success (201 or 200)
+              const ticketNo = data?.data?.ticket_no || data?.ticket_no || data?.data?.id || '';
+              setMsg('msg','Tiket berhasil dibuat: ' + (ticketNo || '(nomor tidak tersedia)'), 'ok');
               form.reset();
             }
+
           } catch (err) {
-            setMsg('Terjadi kesalahan: ' + (err.message || err), 'err');
+            setMsg('msg','Terjadi kesalahan: ' + (err.message || err), 'err');
+            console.error(err);
           } finally {
             if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = 'Submit'; }
           }
         });
+
+        // search handler
+        btnSearch && btnSearch.addEventListener('click', function(e){
+          e.preventDefault();
+          const no = inputSearch.value || '';
+          handleSearchTicket(no);
+        });
+
+        // allow Enter key in input to trigger search
+        inputSearch && inputSearch.addEventListener('keydown', function(e){
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            btnSearch.click();
+          }
+        });
       }
+
     })();
   </script>
 </body>

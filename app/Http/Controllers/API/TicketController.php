@@ -180,6 +180,17 @@ class TicketController extends Controller
             return response()->json(['success' => false, 'message' => 'Ticket not found'], 404);
         }
 
-        return response()->json(['success' => true, 'data' => $ticket]);
+        // Simplified payload
+        $payload = [
+            'ticket_no'     => $ticket->ticket_no,
+            'status'        => $ticket->status,
+            'reporter_name' => $ticket->reporter_name,
+            'category'      => $ticket->category,
+            'kode_kantor'   => $ticket->kode_kantor,
+            'created_at'    => optional($ticket->created_at)->toDateTimeString(),
+            'updated_at'    => optional($ticket->updated_at)->toDateTimeString(),
+        ];
+
+        return response()->json(['success' => true, 'data' => $payload]);
     }
 }

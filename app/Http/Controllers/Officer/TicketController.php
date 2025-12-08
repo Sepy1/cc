@@ -27,6 +27,7 @@ class TicketController extends Controller
     public function index(Request $request)
     {
         $q = $request->query('q');
+        $status = $request->query('status'); // added
 
         $tickets = Ticket::query()
             ->where('assigned_to', Auth::id())
@@ -36,6 +37,10 @@ class TicketController extends Controller
                    ->orWhere('reporter_name', 'like', "%{$q}%")
                    ->orWhere('email', 'like', "%{$q}%");
             }))
+            // added: filter by status if provided and valid
+            ->when($status && in_array($status, ['open','pending','progress','resolved','closed','rejected']), function($query) use ($status) {
+                $query->where('status', $status);
+            })
             ->latest()
             ->paginate(12);
 
