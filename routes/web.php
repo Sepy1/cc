@@ -97,10 +97,6 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/reports/export', [ReportController::class, 'export'])
             ->name('reports.export');
 
-        // Export: CSV fallback (no external package required)
-        Route::get('/reports/export-csv', [ReportController::class, 'exportCsv'])
-            ->name('reports.export_csv');
-
         // Export: PDF laporan bulanan
         Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])
             ->name('reports.export_pdf');
@@ -108,6 +104,43 @@ Route::middleware(['auth', 'role:admin'])
         // Profile
         Route::get('/profile', [\App\Http\Controllers\Admin\TicketAdminController::class, 'showProfile'])->name('profile.show');
         Route::post('/profile', [\App\Http\Controllers\Admin\TicketAdminController::class, 'updateProfile'])->name('profile.update');
+
+        // Export Excel (all columns) without external packages
+        Route::get('/reports/export-excel', function (\Illuminate\Http\Request $request) {
+            $month = $request->query('month', 'all');
+            $year  = $request->query('year', 'all');
+
+            $q = \Illuminate\Support\Facades\DB::table('tickets');
+            if ($month !== 'all' && is_numeric($month)) $q->whereMonth('created_at', (int)$month);
+            if ($year !== 'all' && is_numeric($year))   $q->whereYear('created_at', (int)$year);
+
+            $rows = $q->orderByDesc('created_at')->get();
+            // filter out attachment columns
+            $cols = array_values(array_filter(
+                \Illuminate\Support\Facades\Schema::getColumnListing('tickets'),
+                fn($c) => !in_array($c, ['attachment_ktp','attachment_bukti'])
+            ));
+
+            $html = '<table border="1"><thead><tr>';
+            foreach ($cols as $c) { $html .= '<th>'.htmlspecialchars($c, ENT_QUOTES, 'UTF-8').'</th>'; }
+            $html .= '</tr></thead><tbody>';
+            foreach ($rows as $r) {
+                $html .= '<tr>';
+                foreach ($cols as $c) {
+                    $val = $r->$c ?? '';
+                    if (is_bool($val)) $val = $val ? '1' : '0';
+                    if (is_object($val) || is_array($val)) $val = json_encode($val, JSON_UNESCAPED_UNICODE);
+                    $html .= '<td>'.htmlspecialchars((string)$val, ENT_QUOTES, 'UTF-8').'</td>';
+                }
+                $html .= '</tr>';
+            }
+            $html .= '</tbody></table>';
+
+            $filename = 'tickets_'.date('Ymd_His').'.xls';
+            return response("\xEF\xBB\xBF".$html)
+                ->header('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
+                ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+        })->name('reports.export_excel');
     });
 
 /*

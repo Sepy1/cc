@@ -117,13 +117,10 @@
               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V8h4.5L14 3.5zM8 13h8v2H8v-2zm0 4h8v2H8v-2zm0-8h5v2H8V9z"/></svg>
               Download PDF
             </a>
-            <a href="{{ route('admin.reports.export_csv', ['month' => request('month', $month ?? 'all'), 'year' => request('year', $year ?? 'all')]) }}"
+            <a href="{{ route('admin.reports.export_excel', ['month' => request('month', $month ?? 'all'), 'year' => request('year', $year ?? 'all')]) }}"
                class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
-              </svg>
-              Download CSV
+              <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4zM7 7h3v3H7zM11 7h6v2h-6zM11 10h6v2h-6zM7 11h3v3H7zM11 13h6v2h-6zM7 15h10v2H7z"/></svg>
+              Download Excel
             </a>
           </div>
         </div>
