@@ -21,7 +21,7 @@
     .mt-12 { margin-top: 12px; }
     .mt-20 { margin-top: 20px; }
     .brand { display:flex; align-items:center; gap:12px; }
-    .brand img { height:38px; }
+    .brand img { height:100px; }
     /* Hindari pecah halaman pada blok tanda tangan */
     .sign-wrap { display: block; page-break-inside: avoid; margin-top: 16px; }
     .sign { width: 32%; display: inline-block; text-align: center; vertical-align: top; }
