@@ -50,7 +50,7 @@
                 <img src="{{ $logoSrc }}" alt="Logo">
             @endif
             <div>
-                <div>PT BPR BKK JATENG (Perseroda)</div>
+                
                 <div class="muted">Laporan Bulanan Call Center</div>
             </div>
         </div>
