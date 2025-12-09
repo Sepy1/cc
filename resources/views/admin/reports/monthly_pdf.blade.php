@@ -31,15 +31,23 @@
 </head>
 <body>
     @php
-        // Render logo hanya jika GD tersedia
-        $canRenderLogo = extension_loaded('gd') || function_exists('imagecreate');
+        // Build a safe logo src for Dompdf
         $logoPath = public_path('images/logo.png');
-        $logoData = ($canRenderLogo && file_exists($logoPath)) ? base64_encode(file_get_contents($logoPath)) : null;
+        $logoSrc = null;
+        if (file_exists($logoPath) && is_readable($logoPath) && extension_loaded('gd')) {
+            // preferred: data URL (note the comma after base64)
+            $logoSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath));
+            // fallback: file:// absolute path if needed
+            if (!$logoSrc) {
+                $real = realpath($logoPath);
+                $logoSrc = $real ? ('file://' . $real) : null;
+            }
+        }
     @endphp
     <div class="header">
         <div class="brand">
-            @if($logoData)
-                <img src="data:image/png;base64{{ ':' . $logoData }}" alt="Logo">
+            @if($logoSrc)
+                <img src="{{ $logoSrc }}" alt="Logo">
             @endif
             <div>
                 <div>PT BPR BKK JATENG (Perseroda)</div>
