@@ -344,28 +344,29 @@
     </div>
 </div>
 
-{{-- EDIT MODAL (HTML inside section is okay) --}}
-<div id="editModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
-    <div id="editModalOverlay" class="fixed inset-0 bg-black bg-opacity-40 transition-opacity"></div>
+{{-- EDIT MODAL (scrollable, sticky header & footer) --}}
+<div id="editModal" class="fixed inset-0 z-50 hidden" aria-hidden="true" role="dialog" aria-modal="true">
+    <div id="editModalOverlay" class="absolute inset-0 bg-black bg-opacity-40"></div>
 
     <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl transform transition-all scale-95 opacity-0"
-             role="dialog" aria-modal="true" aria-labelledby="editModalTitle" id="editModalPanel">
-            <div class="px-6 py-4 border-b flex items-center justify-between">
+        <div id="editModalPanelWrapper" class="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden z-20"
+             style="max-height: 90vh;">
+            {{-- Header (sticky) --}}
+            <div class="sticky top-0 bg-white z-30 px-6 py-4 border-b flex items-center justify-between">
                 <h3 id="editModalTitle" class="text-lg font-semibold text-gray-900">Edit Tiket — {{ $ticket->ticket_no }}</h3>
-                <button type="button" id="closeEditModal" class="text-gray-400 hover:text-gray-600">
-                    <span class="sr-only">Tutup</span>
+                <button type="button" id="closeEditModal" class="text-gray-400 hover:text-gray-600" aria-label="Tutup">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
 
-            <form id="editTicketForm" action="{{ route('admin.tickets.update', $ticket->id) }}" method="POST" class="px-6 py-6">
-                @csrf
-                @method('PUT')
+            {{-- Body (scrollable) --}}
+            <div class="px-6 py-4 overflow-y-auto" id="editModalBody" style="max-height: calc(90vh - 8.25rem);">
+                <form id="editTicketFormScrollable" action="{{ route('admin.tickets.update', $ticket->id) }}" method="POST" class="grid grid-cols-1 gap-4">
+                    @csrf
+                    @method('PUT')
 
-                <div class="grid grid-cols-1 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-700">Judul</label>
                         <input name="title" type="text" required
@@ -414,58 +415,52 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-700">Status</label>
-                            <select name="status" id="status" class="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <select name="status" id="status_scroll" class="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="open" {{ old('status', $ticket->status) == 'open' ? 'selected' : '' }}>Open</option>
                                 <option value="pending" {{ old('status', $ticket->status) == 'pending' ? 'selected' : '' }}>Pending</option>
                                 <option value="resolved" {{ old('status', $ticket->status) == 'resolved' ? 'selected' : '' }}>Resolved</option>
                                 <option value="closed" {{ old('status', $ticket->status) == 'closed' ? 'selected' : '' }}>Closed</option>
                                 <option value="rejected" {{ old('status', $ticket->status) == 'rejected' ? 'selected' : '' }}>Rejected</option>
                             </select>
-                            @error('status') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-gray-700">Tindak Lanjut <span class="text-danger" id="tindak-required">*</span></label>
-                            <textarea name="tindak_lanjut" id="tindak_lanjut" class="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3" placeholder="Masukkan tindak lanjut...">{{ old('tindak_lanjut', $ticket->tindak_lanjut) }}</textarea>
-                            @error('tindak_lanjut') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            <label class="block text-xs font-medium text-gray-700">Tindak Lanjut <span class="text-danger" id="tindak-required-scroll">*</span></label>
+                            <textarea name="tindak_lanjut" id="tindak_lanjut_scroll" class="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3" placeholder="Masukkan tindak lanjut...">{{ old('tindak_lanjut', $ticket->tindak_lanjut) }}</textarea>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {{-- Tambahkan media_closing (required) --}}
                         <div>
                             <label class="block text-xs font-medium text-gray-700">Media Closing <span class="text-red-600">*</span></label>
-                            <select name="media_closing" required
-                                class="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                @php $mc = old('media_closing', $ticket->media_closing); @endphp
+                            @php $mc = old('media_closing', $ticket->media_closing); @endphp
+                            <select name="media_closing" required class="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="whatsapp" @selected($mc==='whatsapp')>WhatsApp</option>
                                 <option value="telephone" @selected($mc==='telephone')>Telephone</option>
                                 <option value="email" @selected($mc==='email')>Email</option>
                                 <option value="offline" @selected($mc==='offline')>Offline</option>
                             </select>
-                            @error('media_closing') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                         </div>
                     </div>
 
-                    {{-- Reporter Type (required) --}}
                     <div>
                         <label class="block text-xs font-medium text-gray-700">Tipe Pelapor <span class="text-red-600">*</span></label>
                         @php $rt = old('reporter_type', $ticket->reporter_type ?? ($ticket->is_nasabah ? 'nasabah' : 'umum')); @endphp
-                        <select name="reporter_type" required
-                                class="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select name="reporter_type" required class="mt-1 block w-full border border-gray-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="nasabah" @selected($rt==='nasabah')>Nasabah</option>
                             <option value="umum" @selected($rt==='umum')>Umum</option>
                         </select>
-                        @error('reporter_type') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
                         <p class="mt-1 text-xs text-gray-500">Memilih “Nasabah” akan menyetel flag is_nasabah.</p>
                     </div>
-                </div>
 
-                <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" id="cancelEditBtn" class="px-4 py-2 rounded-md border border-gray-200 text-sm text-gray-700 hover:bg-gray-50">Batal</button>
-                    <button type="submit" class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700">Simpan Perubahan</button>
-                </div>
-            </form>
+                </form>
+            </div>
+
+            {{-- Footer (sticky) --}}
+            <div class="sticky bottom-0 bg-white z-30 px-6 py-3 border-t flex justify-end gap-3">
+                <button type="button" id="cancelEditBtn" class="px-4 py-2 rounded-md border border-gray-200 text-sm text-gray-700 hover:bg-gray-50">Batal</button>
+                <button type="submit" form="editTicketFormScrollable" class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700">Simpan Perubahan</button>
+            </div>
         </div>
     </div>
 </div>
@@ -587,33 +582,33 @@
 
 
 @endsection
-
 @push('scripts')
 <script>
 (function () {
-    // --- Modal edit logic ---
+    // --- Edit modal (scrollable) logic ---
     const openButtons = document.querySelectorAll('.open-edit');
     const modalRoot = document.getElementById('editModal');
-    const modalPanel = document.getElementById('editModalPanel');
-    const overlay = document.getElementById('editModalOverlay');
+    const modalOverlay = document.getElementById('editModalOverlay');
+    const modalWrapper = document.getElementById('editModalPanelWrapper'); // updated id
     const closeBtn = document.getElementById('closeEditModal');
     const cancelBtn = document.getElementById('cancelEditBtn');
 
     function openEditModal() {
-        if (!modalRoot) return;
+        if (!modalRoot || !modalWrapper) return;
         modalRoot.classList.remove('hidden');
-        modalPanel.style.transform = 'translateY(0) scale(1)';
-        modalPanel.style.opacity = '1';
+        // animate in
+        modalWrapper.style.transform = 'translateY(0) scale(1)';
+        modalWrapper.style.opacity = '1';
         document.body.style.overflow = 'hidden';
-        const first = modalPanel.querySelector('input, textarea, select, button');
+        const first = modalWrapper.querySelector('input, textarea, select, button');
         if (first) first.focus();
         document.addEventListener('keydown', escEditHandler);
     }
 
     function closeEditModal() {
-        if (!modalRoot) return;
-        modalPanel.style.transform = 'translateY(8px) scale(.98)';
-        modalPanel.style.opacity = '0';
+        if (!modalRoot || !modalWrapper) return;
+        modalWrapper.style.transform = 'translateY(8px) scale(.98)';
+        modalWrapper.style.opacity = '0';
         setTimeout(() => {
             modalRoot.classList.add('hidden');
             document.body.style.overflow = '';
@@ -632,16 +627,16 @@
         });
     });
 
-    if (overlay) overlay.addEventListener('click', closeEditModal);
+    if (modalOverlay) modalOverlay.addEventListener('click', closeEditModal);
     if (closeBtn) closeBtn.addEventListener('click', closeEditModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeEditModal);
 
-    // if server returned validation errors for edit, open modal automatically
-    @if($errors->any())
+    // open modal automatically if server returned validation errors for edit (and old input exists)
+    @if($errors->any() && old())
         openEditModal();
     @endif
 
-    // --- History modal logic ---
+    // --- History modal logic (unchanged ids) ---
     const openHistoryButtons = document.querySelectorAll('.open-history');
     const historyRoot = document.getElementById('historyModal');
     const historyPanel = document.getElementById('historyModalPanel');
@@ -650,26 +645,24 @@
     const historyCloseFooterBtn = document.getElementById('closeHistoryFooterBtn');
 
     function openHistoryModal() {
-    if (!historyRoot) return;
-    historyRoot.classList.remove('hidden');
-    historyPanel.style.transform = 'translateY(0) scale(1)';
-    historyPanel.style.opacity = '1';
-    document.body.style.overflow = 'hidden';
-    // reset scroll to top of content
-    const content = document.getElementById('historyModalContent');
-    if (content) {
-        content.scrollTop = 0;
+        if (!historyRoot || !historyPanel) return;
+        historyRoot.classList.remove('hidden');
+        historyPanel.style.transform = 'translateY(0) scale(1)';
+        historyPanel.style.opacity = '1';
+        document.body.style.overflow = 'hidden';
+        // reset scroll to top of content
+        const content = document.getElementById('historyModalContent');
+        if (content) content.scrollTop = 0;
+        // focus the panel for accessibility
+        setTimeout(() => {
+            const focusable = historyPanel.querySelector('button, a, input, textarea, select');
+            if (focusable) focusable.focus();
+        }, 80);
+        document.addEventListener('keydown', escHistoryHandler);
     }
-    // focus the panel for accessibility
-    setTimeout(() => {
-        const focusable = historyPanel.querySelector('button, a, input, textarea, select');
-        if (focusable) focusable.focus();
-    }, 80);
-    document.addEventListener('keydown', escHistoryHandler);
-}
 
     function closeHistoryModal() {
-        if (!historyRoot) return;
+        if (!historyRoot || !historyPanel) return;
         historyPanel.style.transform = 'translateY(8px) scale(.98)';
         historyPanel.style.opacity = '0';
         setTimeout(() => {
@@ -694,11 +687,8 @@
     if (historyCloseBtn) historyCloseBtn.addEventListener('click', closeHistoryModal);
     if (historyCloseFooterBtn) historyCloseFooterBtn.addEventListener('click', closeHistoryModal);
 
-    // Optional: auto-focus message textarea on page load
+    // --- Page init: attachment UI, comments box resize, auto-scroll ---
     document.addEventListener('DOMContentLoaded', function () {
-        // Jangan auto-focus agar halaman tidak auto-scroll ke bawah saat load
-        const msg = document.getElementById('message'); // dipakai nanti jika perlu, tanpa focus
-
         // Attachment UI
         const fileInput = document.getElementById('attachment');
         const fileName  = document.getElementById('attachmentName');
@@ -708,6 +698,17 @@
             const name = fileInput && fileInput.files && fileInput.files.length ? fileInput.files[0].name : 'Belum ada file';
             if (fileName) fileName.textContent = name;
             if (clearBtn) clearBtn.classList.toggle('hidden', !(fileInput && fileInput.value));
+        }
+
+        if (fileInput) {
+            fileInput.addEventListener('change', updateName);
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function () {
+                    fileInput.value = '';
+                    updateName();
+                });
+            }
+            updateName();
         }
 
         // Komentar scroll box: auto height + auto scroll bottom
@@ -722,14 +723,13 @@
         }
         resizeCommentsBox();
         window.addEventListener('resize', resizeCommentsBox);
-        // Auto scroll ke komentar terakhir (hanya dalam box)
         if (commentsBox) commentsBox.scrollTop = commentsBox.scrollHeight;
     });
 
-    // Status & Tindak Lanjut toggle logic
-    var statusEl = document.getElementById('status');
-    var tindakField = document.getElementById('tindak_lanjut');
-    var requiredBadge = document.getElementById('tindak-required');
+    // --- Status & Tindak Lanjut toggle logic (updated ids for scrollable edit modal) ---
+    var statusEl = document.getElementById('status_scroll') || document.getElementById('status');
+    var tindakField = document.getElementById('tindak_lanjut_scroll') || document.getElementById('tindak_lanjut');
+    var requiredBadge = document.getElementById('tindak-required-scroll') || document.getElementById('tindak-required');
 
     if (statusEl && tindakField && requiredBadge) {
         function toggleTindakRequired() {
@@ -743,6 +743,7 @@
         }
 
         statusEl.addEventListener('change', toggleTindakRequired);
+        // initialize on load
         toggleTindakRequired();
     }
 })();
