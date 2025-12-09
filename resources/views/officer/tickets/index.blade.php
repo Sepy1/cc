@@ -73,7 +73,7 @@
                 ">
                     <div class="px-5 py-5 flex flex-col h-full">
 
-                        {{-- Header No Tiket + Status + short detail on mobile --}}
+                        {{-- Header No Tiket + Status --}}
                         <div class="flex items-start justify-between gap-3">
                             <div class="flex-1 min-w-0">
                                 <a href="{{ route('officer.tickets.show', $t->id) }}"
@@ -83,10 +83,6 @@
 
                                 <div class="mt-1 text-lg font-semibold text-gray-900 leading-snug truncate">
                                     {{ \Illuminate\Support\Str::limit($t->title, 80) }}
-                                </div>
-
-                                <div class="mt-2 text-sm text-gray-600 line-clamp-2 sm:line-clamp-3 leading-relaxed hidden sm:block">
-                                    {{ \Illuminate\Support\Str::limit($t->detail, 140) }}
                                 </div>
                             </div>
 

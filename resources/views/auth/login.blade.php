@@ -64,20 +64,20 @@
                         <x-input-error :messages="$errors->get('password')" class="mt-2" />
                     </div>
 
-                    {{-- Remember + Forgot --}}
-                    <div class="flex items-center justify-between">
-                        <label for="remember_me" class="inline-flex items-center">
+                    {{-- Remember + Forgot (tidy layout) --}}
+                    <div class="flex items-center justify-between gap-3">
+                        <label for="remember_me" class="inline-flex items-center select-none">
                             <input id="remember_me"
                                    type="checkbox"
                                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
                                    name="remember">
-                            <span class="ml-2 text-sm text-gray-600">Remember me</span>
+                            <span class="ml-2 text-sm text-gray-700">Ingat saya</span>
                         </label>
 
                         @if (Route::has('password.request'))
-                            <a class="text-sm text-indigo-600 hover:text-indigo-700 hover:underline transition"
-                               href="{{ route('password.request') }}">
-                                {{ __('Forgot your password?') }}
+                            <a href="{{ route('password.request') }}"
+                               class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                                Lupa password?
                             </a>
                         @endif
                     </div>

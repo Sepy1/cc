@@ -352,8 +352,8 @@
         <div id="editModalPanelWrapper" class="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden z-20"
              style="max-height: 90vh;">
             {{-- Header (sticky) --}}
-            <div class="sticky top-0 bg-white z-30 px-6 py-4 border-b flex items-center justify-between">
-                <h3 id="editModalTitle" class="text-lg font-semibold text-gray-900">Edit Tiket — {{ $ticket->ticket_no }}</h3>
+            <div class="sticky top-0 bg-indigo-600 z-30 px-6 py-4 border-b flex items-center justify-between">
+                <h3 id="editModalTitle" class="text-lg font-semibold text-white">Edit Tiket — {{ $ticket->ticket_no }}</h3>
                 <button type="button" id="closeEditModal" class="text-gray-400 hover:text-gray-600" aria-label="Tutup">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

@@ -91,11 +91,6 @@
                             <div class="mt-1 text-lg font-semibold text-gray-900 leading-snug truncate">
                                 {{ \Illuminate\Support\Str::limit($t->title, 80) }}
                             </div>
-
-                            {{-- On very small screens show a short detail under title for quick preview --}}
-                            <div class="mt-2 text-sm text-gray-600 line-clamp-2 sm:line-clamp-3 leading-relaxed hidden sm:block">
-                                {{ \Illuminate\Support\Str::limit($t->detail, 140) }}
-                            </div>
                         </div>
 
                         <div class="text-right ml-3 flex-shrink-0">
@@ -180,8 +175,8 @@
         style="max-height: 90vh;"
     >
         {{-- Header (sticky) --}}
-        <div class="sticky top-0 bg-white z-20 flex items-center justify-between px-6 py-4 border-b">
-            <h3 class="text-lg font-semibold text-gray-900">Buat Tiket Baru</h3>
+        <div class="sticky top-0 bg-indigo-600 z-20 flex items-center justify-between px-6 py-4 border-b">
+            <h3 class="text-lg font-semibold text-white">Buat Tiket Baru</h3>
             <button id="closeCreateModal" class="text-gray-500 hover:text-gray-700" aria-label="Tutup">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
