@@ -348,7 +348,6 @@
         container.innerHTML = '';
         if (!data) return;
 
-        // normalized: { success: true, data: {...} }
         const t = data?.data || data || {};
         const el = document.createElement('div');
         el.className = 'ticket-card';
@@ -382,8 +381,14 @@
 
         const detail = document.createElement('div');
         detail.style.marginTop = '8px';
-        detail.innerHTML = '<pre style="white-space:pre-wrap;margin:0;font-family:inherit;">' + (t.detail || '-') + '</pre>';
+        detail.innerHTML = '<div class="small-note">Detail Permasalahan</div><pre style="white-space:pre-wrap;margin:0;font-family:inherit;">' + (t.detail ?? '-') + '</pre>';
         el.appendChild(detail);
+
+        // added: tindak lanjut
+        const tindak = document.createElement('div');
+        tindak.style.marginTop = '8px';
+        tindak.innerHTML = '<div class="small-note">Tindak Lanjut</div><pre style="white-space:pre-wrap;margin:0;font-family:inherit;">' + (t.tindak_lanjut ?? '-') + '</pre>';
+        el.appendChild(tindak);
 
         // Attachments: prefer normalized URLs
         const ktpUrl = ensureUrl(t.attachment_ktp_url || t.attachment_ktp);

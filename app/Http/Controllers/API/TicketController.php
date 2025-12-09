@@ -189,7 +189,17 @@ class TicketController extends Controller
             'kode_kantor'   => $ticket->kode_kantor,
             'created_at'    => optional($ticket->created_at)->toDateTimeString(),
             'updated_at'    => optional($ticket->updated_at)->toDateTimeString(),
+            // always include these fields (can be null)
+            'title'         => $ticket->title ?? null,
+            'detail'        => $ticket->detail ?? null,
+            'tindak_lanjut' => $ticket->tindak_lanjut ?? null,
         ];
+
+        // debug: log what we send to help verify live payload
+        \Illuminate\Support\Facades\Log::info('api_show_ticket_payload', [
+            'ticket_no' => $ticket_no,
+            'payload_keys' => array_keys($payload),
+        ]);
 
         return response()->json(['success' => true, 'data' => $payload]);
     }

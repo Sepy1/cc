@@ -1,0 +1,649 @@
+<!-- Fonts (inline, tanpa <head>) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Scoped CSS -->
+<style>
+  .hd-wrap * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+  .hd-wrap{ width:100%; max-width:1100px; margin:0 auto; }
+
+  .hd-card{ background:#fff; border-radius:14px; padding:28px; box-shadow:0 12px 40px rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.05); }
+
+  .hd-btn{ padding:10px 16px; border-radius:10px; cursor:pointer; font-weight:700; border:none; }
+  .hd-btn-primary{ background:#d69a3a; color:#2b2a88; }
+  .hd-btn-ghost{ background:#fff; border:1px solid #ccc; }
+
+  .hd-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .hd-grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+
+  .hd-hidden{ display:none!important; }
+
+  input.hd-input, textarea.hd-input, select.hd-input{
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid #ddd; font-size:14px;
+  }
+
+  /* Ticket result style (matches screenshot) */
+  .hd-ticket-card{
+    border-radius:18px;
+    padding:34px 44px;
+    margin-top:20px;
+    background:linear-gradient(180deg, #0b1b33 0%, #0b2540 100%);
+    color:#fff;
+    box-shadow: 0 28px 80px rgba(6,10,24,0.35);
+    position:relative;
+    overflow:hidden;
+    width:100%;
+  }
+
+  .hd-ticket-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+  .hd-ticket-left{ display:flex; flex-direction:column; gap:8px; }
+
+  .hd-ticket-number{ font-size:48px; font-weight:900; letter-spacing:0.6px; color:#ffffff; line-height:1; text-shadow: 0 6px 22px rgba(0,0,0,0.6); }
+  .hd-ticket-sub{ color:rgba(255,255,255,0.85); font-size:15px; font-weight:600; }
+
+  .hd-status-pill{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    padding:10px 14px; border-radius:999px; background:#ffffff; color:#0b1220;
+    font-weight:800; font-size:14px; letter-spacing:0.6px; box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+  }
+
+  .hd-ticket-brand{ font-weight:800; letter-spacing:1px; font-size:14px; color:rgba(255,255,255,0.95); margin-top:8px; }
+
+  .hd-ticket-info{ margin-top:28px; display:grid; grid-template-columns:repeat(3,1fr); gap:24px; align-items:start; }
+  .hd-info-block .label{ color: rgba(255,255,255,0.75); font-size:14px; margin-bottom:8px; }
+  .hd-info-block .value{ font-weight:800; font-size:20px; color:#ffffff; }
+  .hd-info-right{ text-align:right; }
+
+  @media (max-width:880px){
+    .hd-ticket-number{ font-size:36px; }
+    .hd-ticket-info{ grid-template-columns:1fr 1fr; }
+    .hd-info-right{ text-align:left; }
+  }
+  @media (max-width:520px){
+    .hd-ticket-top{ flex-direction:column; align-items:flex-start; gap:12px; }
+    .hd-ticket-info{ grid-template-columns:1fr; gap:12px; }
+    .hd-ticket-card{ padding:20px; }
+  }
+
+  /* small helpers */
+  .muted { color:#6b7280; font-size:14px; }
+
+  /* Toast */
+  .hd-toast-wrap{
+    position:fixed;
+    right:20px;
+    bottom:24px;
+    z-index:99999;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    pointer-events:none;
+  }
+  .hd-toast{
+    pointer-events:auto;
+    min-width:220px;
+    max-width:360px;
+    background:#111827;
+    color:#fff;
+    padding:10px 14px;
+    border-radius:12px;
+    box-shadow:0 8px 28px rgba(2,6,23,0.45);
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    transform:translateY(8px);
+    opacity:0;
+    transition:all .32s cubic-bezier(.2,.9,.3,1);
+  }
+  .hd-toast.show{ opacity:1; transform:translateY(0); }
+  .hd-toast.success{ background:#064e3b; }
+  .hd-toast.error{ background:#7f1d1d; }
+  .hd-toast .close{ margin-left:auto; cursor:pointer; font-weight:800; opacity:0.9; }
+
+  /* Modal (for success) */
+  .hd-modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(2,6,23,0.6);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:100000;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+  }
+  .hd-modal-overlay.show{ opacity:1; pointer-events:auto; }
+
+  .hd-modal{
+    width:100%;
+    max-width:520px;
+    background:#fff;
+    border-radius:12px;
+    padding:22px;
+    box-shadow:0 20px 80px rgba(2,6,23,0.45);
+    transform:translateY(8px);
+    transition:transform .18s ease;
+  }
+  .hd-modal-overlay.show .hd-modal{ transform:translateY(0); }
+
+  .hd-modal h3{ margin:0 0 6px 0; font-size:20px; }
+  .hd-modal p{ margin:0 0 14px 0; color:#374151; line-height:1.4; }
+  .hd-ticket-no{
+    display:block;
+    background:#111827;
+    color:#fff;
+    padding:12px 14px;
+    border-radius:8px;
+    font-weight:800;
+    letter-spacing:0.6px;
+    margin-bottom:12px;
+    text-align:center;
+  }
+  .hd-modal .hd-actions{ display:flex; gap:10px; justify-content:flex-end; align-items:center; margin-top:6px; }
+  .hd-modal .hd-actions .hd-btn{ padding:10px 14px; border-radius:8px; font-weight:800; }
+  .hd-modal .hd-actions .hd-btn-ghost{ border:1px solid #e5e7eb; background:#fff; color:#111827; }
+  .hd-modal .hd-actions .hd-btn-primary{ background:#d69a3a; color:#2b2a88; }
+
+  /* small screens modal adjustments */
+  @media (max-width:520px){
+    .hd-modal{ padding:16px; margin: 16px; }
+  }
+</style>
+
+<!-- Markup: container + search + form -->
+<div class="hd-wrap">
+  <div class="hd-card">
+    <h2 style="margin:0 0 6px 0;">Pengaduan Nasabah</h2>
+    <p class="muted" style="margin:0 0 14px 0;">Isi form pengaduan nasabah. Lampiran KTP wajib untuk verifikasi.</p>
+
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <button id="btnToggleForm" class="hd-btn hd-btn-primary" type="button">BUAT TIKET BARU</button>
+
+      <div style="flex:1; min-width:320px;">
+        <input id="searchTicketNo" class="hd-input" placeholder="Masukkan nomor tiket (mis. TKT-20251207-001)">
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <button id="btnSearch" class="hd-btn hd-btn-ghost" type="button">CARI</button>
+        <button id="btnResetSearch" class="hd-btn hd-btn-ghost" type="button">TUTUP</button>
+      </div>
+    </div>
+
+    <div id="searchMsg" style="margin-top:10px; color:#6b7280;"></div>
+
+    <!-- tempat hasil tiket -->
+    <div id="searchResult" style="margin-top:12px;"></div>
+
+    <!-- FORM (tersembunyi awalnya) -->
+    <form id="ticketForm" class="hd-hidden" enctype="multipart/form-data" style="margin-top:18px;">
+      <input type="hidden" name="reporter_type" value="nasabah">
+
+      <div class="hd-grid-2">
+        <label>Nama Nasabah <span style="color:red">*</span>
+          <input type="text" name="reporter_name" class="hd-input" required>
+        </label>
+
+        <label>Email <span style="color:red">*</span>
+          <input type="email" name="email" class="hd-input" required>
+        </label>
+      </div>
+
+      <div class="hd-grid-3" style="margin-top:12px;">
+        <label>No. KTP <input type="text" name="id_ktp" class="hd-input"></label>
+        <label>Nama Ibu <input type="text" name="nama_ibu" class="hd-input"></label>
+        <label>Alamat <span style="color:red">*</span>
+          <input type="text" name="alamat" class="hd-input" required>
+        </label>
+      </div>
+
+      <div class="hd-grid-3" style="margin-top:12px;">
+        <label>Tempat Lahir <span style="color:red">*</span>
+          <input type="text" name="tempat_lahir" class="hd-input" required>
+        </label>
+
+        <label>Tanggal Lahir <span style="color:red">*</span>
+          <input type="date" name="tgl_lahir" class="hd-input" required>
+        </label>
+
+        <label>No. HP <span style="color:red">*</span>
+          <input type="tel" name="phone" class="hd-input" required>
+        </label>
+      </div>
+
+      <div class="hd-grid-3" style="margin-top:12px;">
+        <label>No Rekening <span style="color:red">*</span>
+          <input type="text" name="nomor_rekening" class="hd-input" required>
+        </label>
+
+        <label>Pokok Aduan <span style="color:red">*</span>
+          <select name="category" class="hd-input" required>
+            <option value="">-- Pilih kategori --</option>
+            <option value="tabungan">Tabungan</option>
+            <option value="kredit">Kredit</option>
+            <option value="deposito">Deposito</option>
+            <option value="layanan_digital">Layanan Digital</option>
+            <option value="lainnya">Lainnya</option>
+          </select>
+        </label>
+
+        <label>Tanggal Kejadian
+          <input type="date" name="tanggal_kejadian" class="hd-input">
+        </label>
+      </div>
+
+      <label style="display:block; margin-top:12px;">Judul Tiket <span style="color:red">*</span>
+        <input type="text" name="title" class="hd-input" required>
+      </label>
+
+      <label style="display:block; margin-top:12px;">Deskripsi Masalah <span style="color:red">*</span>
+        <textarea name="detail" class="hd-input" required rows="5"></textarea>
+      </label>
+
+      <label style="display:block; margin-top:12px;">Upload KTP (wajib)
+        <input type="file" name="attachment_ktp" class="hd-input" accept="image/*,.pdf" required>
+      </label>
+
+      <label style="display:block; margin-top:12px;">Upload Bukti (opsional)
+        <input type="file" name="attachment_bukti" class="hd-input" accept="image/*,.pdf">
+      </label>
+
+      <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
+        <button type="button" id="btnResetForm" class="hd-btn hd-btn-ghost">Reset Form</button>
+        <button type="submit" id="btnSubmit" class="hd-btn hd-btn-primary">Kirim Tiket</button>
+        <div id="msg" style="margin-left:8px;color:#333;font-size:14px"></div>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<!-- Toast container (auto-inserted by script if not present) -->
+<!-- Modal markup (inserted by script if not present) -->
+
+<!-- Safe JS: search + render + form submit + toast + modal -->
+<script>
+(function(){
+  const API = "https://callcenter.bkkjateng.co.id/api/tickets";
+
+  // create toast container
+  let toastContainer = document.querySelector('.hd-toast-wrap');
+  if (!toastContainer){
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'hd-toast-wrap';
+    document.body.appendChild(toastContainer);
+  }
+
+  // create modal overlay container (will be reused)
+  let modalOverlay = document.querySelector('.hd-modal-overlay');
+  if (!modalOverlay){
+    modalOverlay = document.createElement('div');
+    modalOverlay.className = 'hd-modal-overlay';
+    modalOverlay.setAttribute('role', 'dialog');
+    modalOverlay.setAttribute('aria-hidden', 'true');
+    modalOverlay.innerHTML = `
+      <div class="hd-modal" role="document" aria-labelledby="hd-modal-title">
+        <h3 id="hd-modal-title">Tiket Berhasil Di Buat</h3>
+        <p id="hd-modal-sub">Silahkan menyimpan nomor tiket untuk melihat update status tiket.</p>
+        <div id="hd-modal-ticket-no" class="hd-ticket-no" aria-live="polite">-</div>
+        <div class="hd-actions">
+          <button class="hd-btn hd-btn-ghost" id="hd-copy-ticket-btn" type="button">Salin Nomor</button>
+          <button class="hd-btn hd-btn-primary" id="hd-close-modal-btn" type="button">Tutup</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modalOverlay);
+  }
+
+  // modal helpers
+  function showModal(ticketNo){
+    const overlay = modalOverlay;
+    overlay.querySelector('#hd-modal-ticket-no').textContent = ticketNo || '-';
+    overlay.classList.add('show');
+    overlay.setAttribute('aria-hidden','false');
+
+    // focus trap-ish: focus close button
+    const closeBtn = overlay.querySelector('#hd-close-modal-btn');
+    const copyBtn = overlay.querySelector('#hd-copy-ticket-btn');
+
+    function onClose(){
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden','true');
+      removeListeners();
+    }
+    function removeListeners(){
+      closeBtn.removeEventListener('click', onClose);
+      overlay.removeEventListener('click', overlayClick);
+      copyBtn.removeEventListener('click', onCopy);
+      document.removeEventListener('keydown', onKeyDown);
+    }
+    function overlayClick(e){
+      if (e.target === overlay) onClose();
+    }
+    function onCopy(){
+      const txt = overlay.querySelector('#hd-modal-ticket-no').textContent || '';
+      if (!txt) return;
+      // copy to clipboard
+      navigator.clipboard && navigator.clipboard.writeText
+        ? navigator.clipboard.writeText(txt).then(()=> {
+            showToast('Nomor tiket disalin ke clipboard.', 'success');
+          })
+        : (function(){
+            const ta = document.createElement('textarea');
+            ta.value = txt; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); showToast('Nomor tiket disalin ke clipboard.', 'success'); } catch(e){ showToast('Gagal menyalin.', 'error'); }
+            ta.remove();
+          })();
+    }
+    function onKeyDown(e){
+      if (e.key === 'Escape') onClose();
+    }
+
+    closeBtn.addEventListener('click', onClose);
+    overlay.addEventListener('click', overlayClick);
+    copyBtn.addEventListener('click', onCopy);
+    document.addEventListener('keydown', onKeyDown);
+
+    // set initial focus
+    setTimeout(()=> copyBtn.focus(), 100);
+  }
+
+  // toast function (kept for errors and other small messages)
+  function showToast(message, type = 'success', timeout = 5000){
+    const t = document.createElement('div');
+    t.className = 'hd-toast ' + (type === 'error' ? 'error' : 'success');
+    t.setAttribute('role','status');
+    t.innerHTML = `<div class="hd-toast-msg">${message}</div><div class="close" aria-label="Tutup">✕</div>`;
+    toastContainer.appendChild(t);
+    // allow animation
+    requestAnimationFrame(()=> t.classList.add('show'));
+
+    const remove = () => {
+      t.classList.remove('show');
+      setTimeout(()=> t.remove(), 340);
+    };
+    // close btn
+    t.querySelector('.close').addEventListener('click', remove);
+    // auto remove
+    if (timeout > 0) setTimeout(remove, timeout);
+  }
+
+  const form = document.getElementById("ticketForm");
+  const toggleBtn = document.getElementById("btnToggleForm");
+  const btnSearch = document.getElementById("btnSearch");
+  const btnResetSearch = document.getElementById("btnResetSearch");
+  const btnResetForm = document.getElementById("btnResetForm");
+  const inputSearch = document.getElementById("searchTicketNo");
+  const searchMsg = document.getElementById("searchMsg");
+  const searchResult = document.getElementById("searchResult");
+  const msg = document.getElementById("msg");
+  const btnSubmit = document.getElementById("btnSubmit");
+
+  function setText(el, text){
+    if(!el) return;
+    el.textContent = text;
+  }
+  function clearResult(){
+    if(!searchResult) return;
+    searchResult.innerHTML = '';
+  }
+  function createEl(tag, opts = {}){
+    const e = document.createElement(tag);
+    if (opts.class) e.className = opts.class;
+    if (opts.text) e.textContent = opts.text;
+    if (opts.html) e.innerHTML = opts.html;
+    return e;
+  }
+
+  // Toggle form
+  toggleBtn && toggleBtn.addEventListener('click', function(){
+    if (!form) return;
+    form.classList.toggle('hd-hidden');
+    toggleBtn.textContent = form.classList.contains('hd-hidden') ? 'BUAT TIKET BARU' : 'TUTUP FORM';
+    if (!form.classList.contains('hd-hidden')){
+      const first = form.querySelector('input, textarea, select');
+      if (first) first.focus();
+      form.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  });
+
+  // Search handler (safe)
+  btnSearch && btnSearch.addEventListener('click', async function(){
+    clearResult(); setText(searchMsg,''); setText(msg,'');
+    const no = inputSearch.value.trim();
+    if (!no){ setText(searchMsg,'Masukkan nomor tiket.'); showToast('Masukkan nomor tiket.', 'error'); return; }
+
+    try {
+      btnSearch.disabled = true; btnSearch.textContent = 'Mencari...';
+      const res = await fetch(API.replace(/\/+$/,'') + '/' + encodeURIComponent(no), {
+        method: 'GET', headers: { 'Accept': 'application/json' }, mode: 'cors'
+      });
+
+      const ctype = (res.headers.get('content-type') || '').toLowerCase();
+      if (!res.ok){
+        if (ctype.includes('application/json')){
+          const j = await res.json().catch(()=>null);
+          const m = 'Gagal mengambil tiket: ' + (j?.message || JSON.stringify(j) || `HTTP ${res.status}`);
+          setText(searchMsg, m);
+          showToast(m, 'error');
+        } else {
+          const m = `Gagal mengambil tiket: HTTP ${res.status} (${res.statusText}).`;
+          setText(searchMsg, m);
+          showToast(m, 'error');
+        }
+        return;
+      }
+
+      if (!ctype.includes('application/json')){
+        const m = 'Respons server bukan JSON; tidak dapat menampilkan tiket.';
+        setText(searchMsg, m);
+        showToast(m, 'error');
+        return;
+      }
+
+      const data = await res.json().catch(()=>null);
+      if (!data){ setText(searchMsg,'Data tiket tidak valid.'); showToast('Data tiket tidak valid.', 'error'); return; }
+      const ticket = data.data || data;
+      if (!ticket || typeof ticket !== 'object'){ setText(searchMsg,'Data tiket tidak valid.'); showToast('Data tiket tidak valid.', 'error'); return; }
+
+      setText(searchMsg,'Tiket ditemukan.');
+      showToast('Tiket ditemukan.', 'success');
+      renderTicket(ticket);
+
+    } catch(err){
+      console.error(err);
+      setText(searchMsg,'Kesalahan jaringan atau server.');
+      showToast('Kesalahan jaringan atau server.', 'error');
+    } finally {
+      btnSearch.disabled = false; btnSearch.textContent = 'CARI';
+    }
+  });
+
+  btnResetSearch && btnResetSearch.addEventListener('click', function(){
+    setText(searchMsg,''); clearResult(); inputSearch.value = '';
+  });
+
+  btnResetForm && btnResetForm.addEventListener('click', function(){
+    if (form) form.reset();
+    setText(msg,'');
+  });
+
+  // Render ticket (layout like screenshot)
+  function renderTicket(ticket){
+    clearResult();
+    if(!searchResult) return;
+
+    const card = createEl('div', { class: 'hd-ticket-card' });
+
+    const top = createEl('div', { class: 'hd-ticket-top' });
+    const left = createEl('div', { class: 'hd-ticket-left' });
+
+    const num = createEl('div', { class: 'hd-ticket-number', text: ticket.ticket_no || ticket.id || '(no)' });
+    left.appendChild(num);
+
+    // subtitle: use title from API
+    if (ticket.title){
+      const sub = createEl('div', { class: 'hd-ticket-sub', text: ticket.title });
+      left.appendChild(sub);
+    }
+
+    top.appendChild(left);
+
+    const rightWrap = createEl('div');
+    const status = (ticket.status || 'open').toString().toLowerCase();
+    const allowed = { open:1, pending:1, closed:1, rejected:1 };
+    const safeStatus = allowed[status] ? status : 'open';
+    const pill = createEl('div', { class: 'hd-status-pill', text: safeStatus.toUpperCase() });
+    const brand = createEl('div', { class: 'hd-ticket-brand', text: 'PT BPR BKK JATENG' });
+
+    rightWrap.appendChild(pill);
+    rightWrap.appendChild(brand);
+    top.appendChild(rightWrap);
+
+    card.appendChild(top);
+
+    const info = createEl('div', { class: 'hd-ticket-info' });
+
+    const makeInfo = (label, value, right=false) => {
+      const block = createEl('div', { class: 'hd-info-block' });
+      const lab = createEl('div', { class: 'label', text: label });
+      const val = createEl('div', { class: 'value' });
+      val.appendChild(document.createTextNode(value || '-'));
+      if (right) block.classList.add('hd-info-right');
+      block.appendChild(lab); block.appendChild(val);
+      return block;
+    };
+
+    const pelapor = ticket.reporter_name || ticket.reporter || '-';
+    const kategori = ticket.category || ticket.kategori || '-';
+    let tanggal = ticket.created_at || ticket.createdAt || ticket.created || ticket.opened_at || '-';
+    try { if (tanggal && tanggal.length >= 10) tanggal = new Date(tanggal).toLocaleString(); } catch(e){}
+
+    info.appendChild(makeInfo('Pelapor', pelapor));
+    info.appendChild(makeInfo('Kategori Aduan', kategori));
+    info.appendChild(makeInfo('Tanggal Open', tanggal, true));
+
+    card.appendChild(info);
+
+    // Detail Permasalahan (exact field)
+    const detailText = (ticket.detail ?? '').toString().trim();
+    const detailBlock = createEl('div', { class: 'hd-info-block' });
+    detailBlock.appendChild(createEl('div', { class: 'label', text: 'Detail Permasalahan' }));
+    const detailVal = createEl('div', { class: 'value' });
+    detailVal.style.whiteSpace = 'pre-wrap';
+    detailVal.style.fontWeight = '600';
+    detailVal.style.fontSize = '16px';
+    detailVal.textContent = detailText || '-';
+    detailBlock.appendChild(detailVal);
+    card.appendChild(detailBlock);
+
+    // Tindak Lanjut (exact field)
+    const tlText = (ticket.tindak_lanjut ?? '').toString().trim();
+    const tlBlock = createEl('div', { class: 'hd-info-block' });
+    tlBlock.appendChild(createEl('div', { class: 'label', text: 'Tindak Lanjut' }));
+    const tlVal = createEl('div', { class: 'value' });
+    tlVal.style.whiteSpace = 'pre-wrap';
+    tlVal.style.fontWeight = '600';
+    tlVal.style.fontSize = '16px';
+    tlVal.textContent = tlText || '-';
+    tlBlock.appendChild(tlVal);
+    card.appendChild(tlBlock);
+
+    searchResult.appendChild(card);
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // helper for attachments (not used to show KTP)
+  function ensureUrlSafe(u){
+    if (!u || typeof u !== 'string') return null;
+    if (/^https?:\/\//i.test(u)) return u;
+    if (u.startsWith('/')) return u;
+    return '/storage/' + u.replace(/^\/+/, '');
+  }
+
+  // Form submit (safe)
+  form && form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    setText(msg,'');
+    try {
+      if (!form.checkValidity()){ form.reportValidity(); return; }
+      if (btnSubmit){ btnSubmit.disabled = true; btnSubmit.textContent = 'Mengirim...'; }
+
+      const fd = new FormData(form);
+      const tanggal = form.querySelector('[name="tanggal_kejadian"]')?.value || '';
+      const deskripsi = form.querySelector('[name="detail"]')?.value || '';
+      if (tanggal) fd.set('detail', [tanggal, deskripsi].filter(Boolean).join('\n\n'));
+      fd.set('reporter_type','nasabah');
+
+      const attachmentKtp = fd.get('attachment_ktp');
+      const attachmentBukti = fd.get('attachment_bukti');
+      const hasFile = (attachmentKtp && attachmentKtp.size>0) || (attachmentBukti && attachmentBukti.size>0);
+
+      let res;
+      if (hasFile){
+        res = await fetch(API, { method:'POST', body: fd, mode:'cors', headers: { 'Accept':'application/json' }});
+      } else {
+        const obj = {};
+        for (const [k,v] of fd.entries()){ if (v === '' || v === null) continue; obj[k] = v; }
+        res = await fetch(API, { method:'POST', headers:{ 'Content-Type':'application/json','Accept':'application/json' }, body: JSON.stringify(obj), mode:'cors' });
+      }
+
+      const ctype = (res.headers.get('content-type') || '').toLowerCase();
+      if (!res.ok){
+        if (ctype.includes('application/json')){
+          const j = await res.json().catch(()=>null);
+          const m = 'Gagal membuat tiket: ' + (j?.message || JSON.stringify(j) || `HTTP ${res.status}`);
+          setText(msg, m);
+          showToast(m, 'error');
+        } else {
+          const m = 'Gagal membuat tiket: server mengembalikan respons tidak terduga.';
+          setText(msg, m);
+          showToast(m, 'error');
+        }
+        return;
+      }
+
+      if (!ctype.includes('application/json')){
+        const m = 'Tiket dibuat (server merespon non-JSON).';
+        setText(msg, m);
+        showToast(m, 'success');
+        form.reset();
+        return;
+      }
+
+      const data = await res.json().catch(()=>null);
+      const ticketNo = data?.data?.ticket_no || data?.ticket_no || data?.data?.id || '';
+      const successMsg = 'Tiket berhasil dibuat: ' + (ticketNo || '(nomor tidak tersedia)');
+      setText(msg, successMsg);
+
+      // === SHOW MODAL INSTEAD OF SUCCESS TOAST ===
+      // Modal text required:
+      // Tiket Berhasil Di Buat
+      // Nomor Tiket Anda :
+      // Silahkan Menyimpan Nomor Tiket Untuk Melihat Update Status Tiket
+      showModal(ticketNo || '(nomor tidak tersedia)');
+
+      // close form and reset
+      form.reset();
+      form.classList.add('hd-hidden');
+      toggleBtn && (toggleBtn.textContent = 'BUAT TIKET BARU');
+
+    } catch(err){
+      console.error(err);
+      const m = 'Terjadi kesalahan saat mengirim tiket.';
+      setText(msg, m);
+      showToast(m, 'error');
+    } finally {
+      if (btnSubmit){ btnSubmit.disabled = false; btnSubmit.textContent = 'Kirim Tiket'; }
+    }
+  });
+
+  // expose renderer if needed
+  window.hdRenderTicket = renderTicket;
+
+})();
+</script>
