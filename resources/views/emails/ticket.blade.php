@@ -8,6 +8,7 @@
     $old = $old_status ?? ($changes['status']['from'] ?? null);
     $new = $new_status ?? ($changes['status']['to'] ?? $status);
     $assignee = $assignee_name ?? ($assigned_to_name ?? null);
+    $tindakLanjut = $tindak_lanjut ?? ($ticket?->tindak_lanjut ?? null);
 
     // Headline & intro otomatis sesuai 'kind'
     switch ($kind) {
@@ -126,7 +127,14 @@
                                         {{ $actionText }}
                                     </a>
                                 </div>
-                                
+                            @endif
+
+                            {{-- Tindak Lanjut (shown when provided) --}}
+                            @if(!empty($tindakLanjut))
+                                <div style="margin:14px 0 0;">
+                                    <div style="font-size:14px;color:#111827;font-weight:bold;margin-bottom:6px;">Tindak Lanjut</div>
+                                    <pre style="margin:0;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:12px;white-space:pre-wrap;color:#374151;font-size:14px;line-height:1.6;">{{ $tindakLanjut }}</pre>
+                                </div>
                             @endif
                         </td>
                     </tr>

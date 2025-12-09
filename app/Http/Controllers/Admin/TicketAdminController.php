@@ -257,7 +257,7 @@ class TicketAdminController extends Controller
         // Email reporter (hide button)
         try {
             if (!empty($ticket->email)) {
-                \Illuminate\Support\Facades\Mail::send('emails.ticket', [
+                $emailData = [
                     'kind'          => 'status_changed',
                     'ticket_no'     => $ticket->ticket_no,
                     'title'         => $ticket->title,
@@ -266,8 +266,14 @@ class TicketAdminController extends Controller
                     'new_status'    => $ticket->status,
                     'status'        => $ticket->status,
                     'actionText'    => 'Lihat Tiket',
-                    'actionUrl'     => '', // hide button for reporter
-                ], function ($m) use ($ticket) {
+                    'actionUrl'     => '',
+                ];
+                // include tindak_lanjut if closed/rejected
+                if (in_array($ticket->status, ['closed', 'rejected'])) {
+                    $emailData['tindak_lanjut'] = $ticket->tindak_lanjut ?? ($request->input('tindak_lanjut') ?? null);
+                }
+
+                \Illuminate\Support\Facades\Mail::send('emails.ticket', $emailData, function ($m) use ($ticket) {
                     $m->to($ticket->email)->subject('[' . config('app.name') . '] Status Diubah: ' . $ticket->ticket_no);
                 });
             }
@@ -496,7 +502,7 @@ class TicketAdminController extends Controller
         // Email reporter (hide button)
         try {
             if (!empty($ticket->email)) {
-                \Illuminate\Support\Facades\Mail::send('emails.ticket', [
+                $emailData = [
                     'kind'          => 'status_changed',
                     'ticket_no'     => $ticket->ticket_no,
                     'title'         => $ticket->title,
@@ -506,7 +512,13 @@ class TicketAdminController extends Controller
                     'status'        => $ticket->status,
                     'actionText'    => 'Lihat Tiket',
                     'actionUrl'     => '', // hide button for reporter
-                ], function ($m) use ($ticket) {
+                ];
+                // include tindak_lanjut if closed/rejected (tindak_lanjut already saved elsewhere)
+                if (in_array($ticket->status, ['closed', 'rejected'])) {
+                    $emailData['tindak_lanjut'] = $ticket->tindak_lanjut ?? null;
+                }
+
+                \Illuminate\Support\Facades\Mail::send('emails.ticket', $emailData, function ($m) use ($ticket) {
                     $m->to($ticket->email)->subject('[' . config('app.name') . '] Status Diubah: ' . $ticket->ticket_no);
                 });
             }

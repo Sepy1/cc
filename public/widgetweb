@@ -520,12 +520,16 @@
 
     const pelapor = ticket.reporter_name || ticket.reporter || '-';
     const kategori = ticket.category || ticket.kategori || '-';
-    let tanggal = ticket.created_at || ticket.createdAt || ticket.created || ticket.opened_at || '-';
-    try { if (tanggal && tanggal.length >= 10) tanggal = new Date(tanggal).toLocaleString(); } catch(e){}
+    let tanggalOpen = ticket.created_at || ticket.createdAt || ticket.created || ticket.opened_at || '-';
+    try { if (tanggalOpen && tanggalOpen.length >= 10) tanggalOpen = new Date(tanggalOpen).toLocaleString(); } catch(e){}
+    let tanggalUpdate = ticket.updated_at || ticket.updatedAt || '-';
+    try { if (tanggalUpdate && tanggalUpdate.length >= 10) tanggalUpdate = new Date(tanggalUpdate).toLocaleString(); } catch(e){}
 
     info.appendChild(makeInfo('Pelapor', pelapor));
     info.appendChild(makeInfo('Kategori Aduan', kategori));
-    info.appendChild(makeInfo('Tanggal Open', tanggal, true));
+    info.appendChild(makeInfo('Tanggal Open', tanggalOpen, true));
+    // added: Tanggal Update right below Tanggal Open
+    info.appendChild(makeInfo('Tanggal Update', tanggalUpdate));
 
     card.appendChild(info);
 
