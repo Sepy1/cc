@@ -16,51 +16,53 @@
 @endphp
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    {{-- Header + Actions --}}
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-semibold text-gray-900">Daftar Tiket</h1>
-        </div>
 
-        <div class="flex items-center gap-3">
-            <form action="{{ route('admin.tickets.index') }}" method="GET" class="flex items-center gap-2">
-                <label for="q" class="sr-only">Cari tiket</label>
-                <input id="q" name="q" value="{{ request('q') }}" type="search"
-                    placeholder="Cari nomor, judul, reporter..."
-                    class="w-64 sm:w-80 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
+    {{-- Combined Filter Card (responsive) --}}
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 mb-6">
+        <div class="flex items-start justify-between gap-4 flex-col sm:flex-row">
+            <div class="flex-1">
+                <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">Daftar Tiket</h1>
+                
+            </div>
 
-                {{-- { added } Filter by status --}}
-                <label for="status" class="sr-only">Status</label>
-                @php
-                    $statuses = ['' => 'Semua', 'open' => 'Open', 'pending' => 'Pending', 'progress' => 'Progress', 'resolved' => 'Resolved', 'closed' => 'Closed', 'rejected' => 'Rejected'];
-                    $currentStatus = request('status', '');
-                @endphp
-                <select id="status" name="status"
-                        class="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    @foreach($statuses as $val => $label)
-                        <option value="{{ $val }}" @selected($currentStatus === $val)>{{ $label }}</option>
-                    @endforeach
-                </select>
+            <div class="w-full sm:w-auto mt-4 sm:mt-0">
+                <form action="{{ route('admin.tickets.index') }}" method="GET" class="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <label for="q" class="sr-only">Cari tiket</label>
+                    <input id="q" name="q" value="{{ request('q') }}" type="search"
+                        placeholder="Cari nomor, judul, reporter..."
+                        class="w-full sm:w-64 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
 
-                <button type="submit" class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
-                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18A7.5 7.5 0 1010.5 3a7.5 7.5 0 000 15z"/></svg>
-                    Tampilkan
-                </button>
-            </form>
+                    @php
+                        $statuses = ['' => 'Semua', 'open' => 'Open', 'pending' => 'Pending', 'progress' => 'Progress', 'resolved' => 'Resolved', 'closed' => 'Closed', 'rejected' => 'Rejected'];
+                        $currentStatus = request('status', '');
+                    @endphp
+                    <select id="status" name="status"
+                            class="w-full sm:w-40 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        @foreach($statuses as $val => $label)
+                            <option value="{{ $val }}" @selected($currentStatus === $val)>{{ $label }}</option>
+                        @endforeach
+                    </select>
 
-            {{-- Create Button --}}
-            <a href="{{ route('admin.tickets.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
-                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                Buat Tiket
-            </a>
+                    <div class="flex items-center gap-2">
+                        <button type="submit" class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
+                            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18A7.5 7.5 0 1010.5 3a7.5 7.5 0 000 15z"/></svg>
+                            Tampilkan
+                        </button>
+
+                        <a href="{{ route('admin.tickets.create') }}" class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
+                            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            Buat
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-   {{-- LIST TIKET (TABLE STYLE) --}}
-{{-- LIST TIKET (CARD GRID) --}}
+   {{-- LIST TIKET (CARD GRID) --}}
 @if($tickets->count())
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div id="ticketsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($tickets as $t)
             @php
                 $type = strtolower($t->reporter_type ?? ($t->is_nasabah ? 'nasabah' : 'umum'));
@@ -76,22 +78,27 @@
                 transition-all duration-300 ease-out 
                 hover:-translate-y-1
             ">
-                <div class="px-5 py-5">
+                <div class="px-5 py-5 flex flex-col h-full">
 
-                    {{-- Header No Tiket + Status --}}
-                    <div class="flex items-start justify-between">
-                        <div>
+                    {{-- Header No Tiket + Status + small detail on mobile --}}
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
                             <a href="{{ route('admin.tickets.show', $t->id) }}"
-                                class="text-sm font-semibold text-indigo-600 hover:underline">
+                                class="text-sm font-semibold text-indigo-600 hover:underline truncate">
                                 {{ $t->ticket_no }}
                             </a>
 
-                            <div class="mt-1 text-lg font-semibold text-gray-900 leading-snug">
+                            <div class="mt-1 text-lg font-semibold text-gray-900 leading-snug truncate">
                                 {{ \Illuminate\Support\Str::limit($t->title, 80) }}
+                            </div>
+
+                            {{-- On very small screens show a short detail under title for quick preview --}}
+                            <div class="mt-2 text-sm text-gray-600 line-clamp-2 sm:line-clamp-3 leading-relaxed hidden sm:block">
+                                {{ \Illuminate\Support\Str::limit($t->detail, 140) }}
                             </div>
                         </div>
 
-                        <div class="text-right">
+                        <div class="text-right ml-3 flex-shrink-0">
                             <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full {{ $badgeClass }}">
                                 {{ ucfirst($t->status) }}
                             </span>
@@ -104,27 +111,31 @@
                     {{-- Reporter --}}
                     <div class="mt-4">
                         <div class="flex items-center gap-2">
-                            <div class="text-sm font-medium text-gray-800">
+                            <div class="text-sm font-medium text-gray-800 truncate">
                                 {{ $t->reporter_name }}
                             </div>
                             <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full {{ $typeBadge }}">
                                 {{ $type === 'nasabah' ? 'Nasabah' : 'Umum' }}
                             </span>
                         </div>
-                        <div class="text-xs text-gray-400 mt-1">
+                        <div class="text-xs text-gray-400 mt-1 truncate">
                             {{ $t->email ?? '-' }}
                         </div>
                     </div>
 
-                    {{-- Detail preview --}}
+                    {{-- Detail preview (moved to bottom for consistent card height) --}}
                     @if(!empty($t->detail))
-                        <div class="mt-4 text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                        <div class="mt-4 text-sm text-gray-600 line-clamp-3 leading-relaxed sm:hidden">
+                            {{-- on small screens show a slightly shorter preview --}}
+                            {{ \Illuminate\Support\Str::limit($t->detail, 160) }}
+                        </div>
+                        <div class="mt-4 text-sm text-gray-600 line-clamp-3 leading-relaxed hidden sm:block">
                             {{ \Illuminate\Support\Str::limit($t->detail, 200) }}
                         </div>
                     @endif
 
                     {{-- Actions --}}
-                    <div class="mt-5 flex justify-end">
+                    <div class="mt-5 mt-auto flex justify-end">
                         <a href="{{ route('admin.tickets.show', $t->id) }}"
                             class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg shadow hover:bg-indigo-700 hover:shadow-md transition">
                             Lihat
@@ -159,11 +170,14 @@
 </div>
 </div>
 
-{{-- Simple JS untuk toggle edit mode --}}
+{{-- Simple JS untuk toggle edit mode (memastikan element id ada) --}}
 @push('scripts')
 <script>
     (function () {
         const toggle = document.getElementById('editMode');
+        // jika toggle tidak ada, jangan error
+        if (!toggle) return;
+
         const dots = toggle.querySelector('.dot');
         const ticketsGrid = document.getElementById('ticketsGrid');
         let editMode = false;
@@ -173,7 +187,7 @@
             // toggle visual
             toggle.classList.toggle('bg-indigo-600', on);
             toggle.classList.toggle('bg-gray-300', !on);
-            dots.style.transform = on ? 'translateX(20px)' : 'translateX(0)';
+            if (dots) dots.style.transform = on ? 'translateX(20px)' : 'translateX(0)';
             toggle.setAttribute('aria-pressed', String(on));
 
             // show/hide edit controls
@@ -185,10 +199,12 @@
             });
 
             // add subtle highlight to cards when editing
-            document.querySelectorAll('#ticketsGrid article').forEach(card => {
-                card.classList.toggle('ring-2', on);
-                card.classList.toggle('ring-indigo-100', on);
-            });
+            if (ticketsGrid) {
+                ticketsGrid.querySelectorAll('article').forEach(card => {
+                    card.classList.toggle('ring-2', on);
+                    card.classList.toggle('ring-indigo-100', on);
+                });
+            }
         }
 
         // init

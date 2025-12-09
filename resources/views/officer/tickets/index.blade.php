@@ -15,44 +15,47 @@
 @endphp
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    {{-- Header + Actions (match admin) --}}
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-semibold text-gray-900">Tiket Saya</h1>
-        </div>
+    {{-- Combined Filter Card (responsive) --}}
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 mb-6">
+        <div class="flex items-start justify-between gap-4 flex-col sm:flex-row">
+            <div class="flex-1">
+                <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">Tiket Saya</h1>
+                
+            </div>
 
-        <div class="flex items-center gap-3">
-            <form action="{{ route('officer.tickets.index') }}" method="GET" class="flex items-center gap-2">
-                <label for="q" class="sr-only">Cari tiket</label>
-                <input id="q" name="q" value="{{ request('q') }}" type="search"
-                    placeholder="Cari nomor, judul, reporter..."
-                    class="w-64 sm:w-80 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
+            <div class="w-full sm:w-auto mt-4 sm:mt-0">
+                <form action="{{ route('officer.tickets.index') }}" method="GET" class="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <label for="q" class="sr-only">Cari tiket</label>
+                    <input id="q" name="q" value="{{ request('q') }}" type="search"
+                        placeholder="Cari nomor, judul, reporter..."
+                        class="w-full sm:w-64 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
 
-                {{-- added: Status filter, match admin style --}}
-                @php
-                    $statuses = ['' => 'Semua', 'open' => 'Open', 'pending' => 'Pending', 'progress' => 'Progress', 'resolved' => 'Resolved', 'closed' => 'Closed', 'rejected' => 'Rejected'];
-                    $currentStatus = request('status', '');
-                @endphp
-                <label for="status" class="sr-only">Status</label>
-                <select id="status" name="status"
-                        class="px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    @foreach($statuses as $val => $label)
-                        <option value="{{ $val }}" @selected($currentStatus === $val)>{{ $label }}</option>
-                    @endforeach
-                </select>
+                    @php
+                        $statuses = ['' => 'Semua', 'open' => 'Open', 'pending' => 'Pending', 'progress' => 'Progress', 'resolved' => 'Resolved', 'closed' => 'Closed', 'rejected' => 'Rejected'];
+                        $currentStatus = request('status', '');
+                    @endphp
+                    <select id="status" name="status"
+                            class="w-full sm:w-40 px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        @foreach($statuses as $val => $label)
+                            <option value="{{ $val }}" @selected($currentStatus === $val)>{{ $label }}</option>
+                        @endforeach
+                    </select>
 
-                <button type="submit" class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
-                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18A7.5 7.5 0 1010.5 3a7.5 7.5 0 000 15z"/></svg>
-                    Tampilkan
-                </button>
-            </form>
+                    <div class="flex items-center gap-2">
+                        <button type="submit" class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">
+                            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18A7.5 7.5 0 1010.5 3a7.5 7.5 0 000 15z"/></svg>
+                            Tampilkan
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     {{-- LIST TIKET (CARD GRID) --}}
     @if($tickets->count())
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div id="ticketsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach($tickets as $t)
                 @php
                     $type = strtolower($t->reporter_type ?? ($t->is_nasabah ? 'nasabah' : 'umum'));
@@ -68,20 +71,26 @@
                     transition-all duration-300 ease-out
                     hover:-translate-y-1
                 ">
-                    <div class="px-5 py-5">
-                        {{-- Header No Tiket + Status (match admin) --}}
-                        <div class="flex items-start justify-between">
-                            <div>
+                    <div class="px-5 py-5 flex flex-col h-full">
+
+                        {{-- Header No Tiket + Status + short detail on mobile --}}
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1 min-w-0">
                                 <a href="{{ route('officer.tickets.show', $t->id) }}"
-                                    class="text-sm font-semibold text-indigo-600 hover:underline">
+                                    class="text-sm font-semibold text-indigo-600 hover:underline truncate">
                                     {{ $t->ticket_no }}
                                 </a>
-                                <div class="mt-1 text-lg font-semibold text-gray-900 leading-snug">
+
+                                <div class="mt-1 text-lg font-semibold text-gray-900 leading-snug truncate">
                                     {{ \Illuminate\Support\Str::limit($t->title, 80) }}
+                                </div>
+
+                                <div class="mt-2 text-sm text-gray-600 line-clamp-2 sm:line-clamp-3 leading-relaxed hidden sm:block">
+                                    {{ \Illuminate\Support\Str::limit($t->detail, 140) }}
                                 </div>
                             </div>
 
-                            <div class="text-right">
+                            <div class="text-right ml-3 flex-shrink-0">
                                 <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full {{ $badgeClass }}">
                                     {{ ucfirst($t->status ?? 'Unknown') }}
                                 </span>
@@ -91,44 +100,50 @@
                             </div>
                         </div>
 
-                        {{-- Reporter (match admin) --}}
+                        {{-- Reporter --}}
                         <div class="mt-4">
                             <div class="flex items-center gap-2">
-                                <div class="text-sm font-medium text-gray-800">
+                                <div class="text-sm font-medium text-gray-800 truncate">
                                     {{ $t->reporter_name }}
                                 </div>
                                 <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full {{ $typeBadge }}">
                                     {{ $type === 'nasabah' ? 'Nasabah' : 'Umum' }}
                                 </span>
                             </div>
-                            <div class="text-xs text-gray-400 mt-1">{{ $t->email ?? '-' }}</div>
+                            <div class="text-xs text-gray-400 mt-1 truncate">
+                                {{ $t->email ?? '-' }}
+                            </div>
                         </div>
 
-                        {{-- Detail preview --}}
+                        {{-- Detail preview (responsive) --}}
                         @if(!empty($t->detail))
-                            <div class="mt-4 text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                            <div class="mt-4 text-sm text-gray-600 line-clamp-3 leading-relaxed sm:hidden">
+                                {{ \Illuminate\Support\Str::limit($t->detail, 160) }}
+                            </div>
+                            <div class="mt-4 text-sm text-gray-600 line-clamp-3 leading-relaxed hidden sm:block">
                                 {{ \Illuminate\Support\Str::limit($t->detail, 200) }}
                             </div>
                         @endif
 
                         {{-- Actions --}}
-                        <div class="mt-5 flex justify-end">
+                        <div class="mt-5 mt-auto flex justify-end">
                             <a href="{{ route('officer.tickets.show', $t->id) }}"
                                 class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg shadow hover:bg-indigo-700 hover:shadow-md transition">
                                 Lihat
                             </a>
                         </div>
+
                     </div>
                 </article>
             @endforeach
         </div>
 
-        {{-- Pagination (match admin) --}}
+        {{-- Pagination --}}
         <div class="mt-6">
             {{ $tickets->withQueryString()->links() }}
         </div>
     @else
-        {{-- Empty state (match admin style) --}}
+        {{-- Empty state --}}
         <div class="bg-white border rounded-lg p-8 text-center shadow-sm">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6M9 16h6M7 8h10M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -142,7 +157,9 @@
 @push('scripts')
 <script>
 (function () {
-    // ...existing code...
+    // safe noop for edit-mode toggle (if exists elsewhere)
+    const toggle = document.getElementById('editMode');
+    if (!toggle) return;
 })();
 </script>
 @endpush
