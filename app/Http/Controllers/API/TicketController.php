@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTicketRequest;
 use App\Models\Ticket;
 use App\Models\TicketEvent;
+use App\Models\Nasabah;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -85,6 +86,26 @@ class TicketController extends Controller
             $data['is_nasabah'] = ($data['reporter_type'] === 'nasabah');
         } elseif ($request->has('is_nasabah')) {
             $data['is_nasabah'] = $request->boolean('is_nasabah');
+        }
+
+        // Validasi KTP untuk reporter_type nasabah
+        if (($data['reporter_type'] ?? 'nasabah') === 'nasabah') {
+            $ktp = $data['id_ktp'] ?? null;
+            if (!$ktp) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Maaf , Nomor KTP Anda Tidak Terdaftar Sebagai Nasabah PT BPR BKK Jateng',
+                    'errors'  => ['id_ktp' => ['Nomor KTP wajib untuk nasabah.']]
+                ], 422);
+            }
+            $exists = Nasabah::where('no_ktp', $ktp)->exists();
+            if (!$exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Maaf , Nomor KTP Anda Tidak Terdaftar Sebagai Nasabah PT BPR BKK Jateng',
+                    'errors'  => ['id_ktp' => ['Maaf , Nomor KTP Anda Tidak Terdaftar Sebagai Nasabah PT BPR BKK Jateng']]
+                ], 422);
+            }
         }
 
         // Generate nomor tiket

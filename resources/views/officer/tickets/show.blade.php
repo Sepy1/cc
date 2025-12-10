@@ -24,6 +24,22 @@
     $isNasabah = strtolower($ticket->reporter_type ?? (($ticket->is_nasabah ?? false) ? 'nasabah' : 'umum')) === 'nasabah';
     $ktpPath   = $ticket->attachment_ktp ?? null;
     $buktiPath = $ticket->attachment_bukti ?? null;
+
+    // Lookup CIF from nasabah by KTP
+    $nasabahCif = null;
+    try {
+        $nasabahCif = \App\Models\Nasabah::where('no_ktp', $ticket->id_ktp)->value('cif');
+    } catch (\Throwable $e) {
+        $nasabahCif = null;
+    }
+
+    // Lookup all CIFs from nasabah by KTP (handle duplicates)
+    $nasabahCifs = [];
+    try {
+        $nasabahCifs = \App\Models\Nasabah::where('no_ktp', $ticket->id_ktp)->pluck('cif')->filter()->values()->all();
+    } catch (\Throwable $e) {
+        $nasabahCifs = [];
+    }
 @endphp
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -112,6 +128,21 @@
                             <h3 class="text-sm font-medium text-gray-700">Informasi Nasabah</h3>
                         </div>
                         <div class="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {{-- CIF list (all matches for the same KTP) --}}
+                            @if(!empty($nasabahCifs))
+                                <div class="sm:col-span-2">
+                                    <div class="text-xs text-gray-500">CIF</div>
+                                    @if(count($nasabahCifs) === 1)
+                                        <div class="mt-1 text-sm text-gray-800">{{ $nasabahCifs[0] }}</div>
+                                    @else
+                                        <ul class="mt-1 text-sm text-gray-800 list-disc pl-5">
+                                            @foreach($nasabahCifs as $cif)
+                                                <li>{{ $cif }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </div>
+                            @endif
                             @if(filled($ticket->id_ktp))
                                 <div>
                                     <div class="text-xs text-gray-500">Nomor KTP</div>
