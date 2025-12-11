@@ -317,6 +317,11 @@ class TicketAdminController extends Controller
             'attachment'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx,xls,xlsx,zip|max:5120',
         ]);
 
+        // Require message if attachment is present
+        if ($request->hasFile('attachment') && !trim((string)$request->input('message'))) {
+            return back()->withErrors(['message' => 'Kolom balasan wajib diisi saat mengunggah lampiran.'])->withInput();
+        }
+
         $path = null;
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');

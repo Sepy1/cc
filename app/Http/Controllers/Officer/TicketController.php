@@ -250,7 +250,12 @@ class TicketController extends Controller
             'attachment' => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,doc,docx,xls,xlsx,zip',
         ]);
 
-        // Minimal salah satu harus ada
+        // Require message if attachment is present
+        if ($request->hasFile('attachment') && !trim((string)($validated['message'] ?? ''))) {
+            return back()->withErrors(['message' => 'Kolom balasan wajib diisi saat mengunggah lampiran.'])->withInput();
+        }
+
+        // Minimal salah satu harus ada (optional: keep existing rule)
         if (blank($validated['message'] ?? null) && !$request->hasFile('attachment')) {
             return back()->withErrors(['message' => 'Isi pesan atau unggah lampiran.'])->withInput();
         }

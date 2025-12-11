@@ -18,6 +18,10 @@
     } catch (\Throwable $e) {
         $nasabahCifs = [];
     }
+
+    $isNasabah = strtolower($ticket->reporter_type ?? ($ticket->is_nasabah ? 'nasabah' : 'umum')) === 'nasabah';
+    $ktpPath   = $ticket->attachment_ktp ?? null;
+    $buktiPath = $ticket->attachment_bukti ?? null;
 @endphp
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -223,6 +227,41 @@
                     </div>
                 @endif
 
+                {{-- Attachments for non-nasabah reporters --}}
+                @unless($isNasabah)
+                    @if($ktpPath || $buktiPath)
+                        <div class="mt-4 bg-white border border-gray-100 rounded-lg">
+                            <div class="px-4 py-3 border-b">
+                                <h3 class="text-sm font-medium text-gray-700">Lampiran Pelapor</h3>
+                            </div>
+                            <div class="px-4 py-4 space-y-2">
+                                @if($ktpPath)
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                        </svg>
+                                        <span class="text-sm text-gray-700">Attachment KTP</span>
+                                        <a class="text-sm text-indigo-600 hover:underline" target="_blank" href="{{ asset('storage/' . $ktpPath) }}">
+                                            {{ basename($ktpPath) }}
+                                        </a>
+                                    </div>
+                                @endif
+                                @if($buktiPath)
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                        </svg>
+                                        <span class="text-sm text-gray-700">Attachment Bukti</span>
+                                        <a class="text-sm text-indigo-600 hover:underline" target="_blank" href="{{ asset('storage/' . $buktiPath) }}">
+                                            {{ basename($buktiPath) }}
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+                @endunless
+
                 {{-- Komentar --}}
                 <div class="bg-white border border-gray-100 rounded-lg">
                     <div class="px-4 py-3 border-b">
@@ -261,9 +300,8 @@
                 {{-- Reply form --}}
                 <div id="replySection">
                     {{-- Form Reply (existing) --}}
-                    <form action="{{ route('admin.tickets.reply', $ticket->id) }}" method="POST" enctype="multipart/form-data" class="mt-4">
+                    <form action="{{ route('admin.tickets.reply', $ticket->id) }}" method="POST" enctype="multipart/form-data" class="mt-4" id="adminReplyForm">
                         @csrf
-    
     <div>
         <label for="message" class="block text-sm font-medium text-gray-700 mb-2">Balasan</label>
         <textarea
@@ -769,6 +807,34 @@
         // initialize on load
         toggleTindakRequired();
     }
+
+    // Enforce: if attachment selected, message is required (admin reply form)
+    (function () {
+        const form = document.getElementById('adminReplyForm');
+        const fileInput = document.getElementById('attachment');
+        const msgInput = document.getElementById('message');
+        if (!form || !fileInput || !msgInput) return;
+
+        function toggleMessageRequired() {
+            const hasFile = fileInput.files && fileInput.files.length > 0;
+            if (hasFile) {
+                msgInput.setAttribute('required', 'required');
+            } else {
+                msgInput.removeAttribute('required');
+            }
+        }
+
+        fileInput.addEventListener('change', toggleMessageRequired);
+        form.addEventListener('submit', function (e) {
+            const hasFile = fileInput.files && fileInput.files.length > 0;
+            const hasMsg = (msgInput.value || '').trim().length > 0;
+            if (hasFile && !hasMsg) {
+                e.preventDefault();
+                msgInput.focus();
+            }
+        });
+        toggleMessageRequired();
+    })();
 })();
 </script>
 @endpush
